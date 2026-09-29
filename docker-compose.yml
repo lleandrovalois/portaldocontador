@@ -1,0 +1,11 @@
+services:
+  portal-do-contador:
+    build: .
+    container_name: portal-do-contador
+    restart: unless-stopped
+    ports:
+      # Mapeia a porta 8080 do servidor para a porta 80 do container.
+      # Altere para "80:80" se a porta 80 do seu Ubuntu estiver livre.
+      - "8080:80"
+    environment:
+      - TZ=America/Sao_Paulo

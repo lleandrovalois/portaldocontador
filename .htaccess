@@ -1,0 +1,21 @@
+# Portal do Contador - Configuração Apache / LiteSpeed (Hostinger)
+
+# UTF-8 padrão
+AddDefaultCharset UTF-8
+
+# Compressão Gzip para melhor performance
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+# Cache de arquivos estáticos
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+  ExpiresByType image/svg+xml "access plus 1 month"
+  ExpiresByType application/pdf "access plus 1 month"
+</IfModule>
+
+# Prevenção de listagem de diretório
+Options -Indexes

@@ -1116,3 +1116,573 @@ html, body {
     gap: 16px;
   }
 }
+
+/* ==========================================================================
+   MÓDULO DE ESCRITURAÇÃO FISCAL, APURAÇÃO & SPED
+   ========================================================================== */
+
+.fiscal-header-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.fiscal-header-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--primary), var(--accent-emerald));
+}
+
+.fiscal-badge-regime {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.fiscal-badge-regime.lucro_real {
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+}
+.fiscal-badge-regime.lucro_presumido {
+  background: rgba(6, 182, 212, 0.2);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+}
+.fiscal-badge-regime.simples_nacional {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.fiscal-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.fiscal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.fiscal-meta strong {
+  color: var(--text-main);
+}
+.status-online {
+  color: var(--accent-emerald);
+  font-weight: 600;
+}
+.status-offline {
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.fiscal-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.control-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.fiscal-select, .fiscal-input-date {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.fiscal-select:focus, .fiscal-input-date:focus {
+  border-color: var(--primary);
+}
+
+.control-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-auditoria {
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.btn-auditoria:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Grid de KPIs da Apuração */
+.fiscal-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast);
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+}
+.kpi-card .kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.kpi-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.kpi-icon {
+  font-size: 20px;
+}
+.kpi-card .kpi-value {
+  font-size: 26px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+.kpi-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.badge-credito {
+  color: var(--accent-cyan);
+  font-weight: 600;
+  background: rgba(6, 182, 212, 0.15);
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+.badge-tema69 {
+  color: #34d399;
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+
+.kpi-card.auditoria-status.aprovado {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: linear-gradient(145deg, var(--bg-surface), rgba(16, 185, 129, 0.08));
+}
+.kpi-card.auditoria-status.aprovado .status-text {
+  color: var(--accent-emerald);
+}
+.kpi-card.auditoria-status.reprovado {
+  border-color: rgba(244, 63, 94, 0.4);
+  background: linear-gradient(145deg, var(--bg-surface), rgba(244, 63, 94, 0.08));
+}
+.kpi-card.auditoria-status.reprovado .status-text {
+  color: var(--accent-rose);
+}
+
+.btn-link-auditoria {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  padding: 4px 0 0 0;
+  transition: color var(--transition-fast);
+}
+.btn-link-auditoria:hover {
+  color: #818cf8;
+}
+
+/* Banner de Exportação SPED */
+.sped-export-banner {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.15), rgba(16, 185, 129, 0.1));
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.sped-export-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.sped-icon {
+  font-size: 32px;
+}
+.sped-export-left h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.sped-export-left p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.sped-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.btn-sped-export {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.btn-sped-export:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+.btn-sped-export.outline {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: #818cf8;
+}
+.btn-sped-export.outline:hover {
+  background: rgba(99, 102, 241, 0.15);
+}
+.btn-sped-export.viewer {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+}
+
+/* Painel de Detalhes da Auditoria */
+.audit-details-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 22px;
+  margin-bottom: 24px;
+}
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.badge-audit-count {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+}
+.badge-audit-count.success {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--accent-emerald);
+}
+.badge-audit-count.danger {
+  background: rgba(244, 63, 94, 0.2);
+  color: var(--accent-rose);
+}
+
+.audit-rules-checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.rule-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-surface-elevated);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.rule-checklist-item.pass {
+  border-left: 3px solid var(--accent-emerald);
+}
+.rule-checklist-item.fail {
+  border-left: 3px solid var(--accent-rose);
+}
+.rule-name {
+  flex: 1;
+  color: var(--text-main);
+}
+.rule-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.rule-checklist-item.pass .rule-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-emerald);
+}
+.rule-checklist-item.fail .rule-badge {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--accent-rose);
+}
+
+.inconsistencies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+.inc-card {
+  display: flex;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-elevated);
+}
+.inc-card.erro {
+  border-left: 4px solid var(--accent-rose);
+}
+.inc-card.alerta {
+  border-left: 4px solid var(--accent-amber);
+}
+.inc-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+.inc-card.erro .inc-badge {
+  background: var(--accent-rose);
+  color: #fff;
+}
+.inc-card.alerta .inc-badge {
+  background: var(--accent-amber);
+  color: #000;
+}
+.inc-content {
+  flex: 1;
+}
+.inc-title {
+  font-size: 13px;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+.inc-msg {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.inc-chave {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.inc-chave code {
+  font-family: var(--font-mono);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* Tabela de Documentos Fiscais */
+.fiscal-documents-table-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 22px;
+  margin-bottom: 30px;
+}
+.table-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.table-actions {
+  display: flex;
+  gap: 10px;
+}
+.fiscal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+.fiscal-table th {
+  background: var(--bg-surface-elevated);
+  padding: 12px 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.fiscal-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-main);
+}
+.fiscal-table tbody tr:hover {
+  background: var(--bg-surface-elevated);
+}
+
+.badge-operacao {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+}
+.badge-operacao.saida {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+.badge-operacao.entrada {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+
+.cfop-pill {
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.cst-pill {
+  font-family: var(--font-mono);
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--accent-cyan);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* Modal de Visualização SPED */
+.modal-sped-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-sped-dialog {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  width: 900px;
+  max-width: 95vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.modal-sped-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.btn-close-modal {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+}
+.modal-sped-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.sped-code-block {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: #38bdf8;
+  background: #050811;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  white-space: pre;
+  overflow-x: auto;
+}
+.modal-sped-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+

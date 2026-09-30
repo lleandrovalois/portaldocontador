@@ -38,6 +38,12 @@
           <span>Interpretador de NF</span>
         </a>
 
+        <a class="nav-item" id="navItemEscrituracao">
+          <span class="nav-icon">🏛️</span>
+          <span>Escrituração & SPED</span>
+          <span class="badge-novo" style="background:#10b981; color:#fff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:auto;">NOVO</span>
+        </a>
+
         <span class="nav-section-title">Módulos do Portal</span>
 
         <a class="nav-item" id="navItemOverview" title="Em breve no Portal">
@@ -107,74 +113,82 @@
       <!-- Corpo da Página -->
       <main class="page-content">
 
-        <!-- Banner de Boas-Vindas e Apresentação -->
-        <section class="hero-banner" id="initialHeroArea">
-          <div class="hero-text">
-            <h1>Interpretador Inteligente de Notas Fiscais</h1>
-            <p>
-              Envie o arquivo <strong>XML</strong> ou o <strong>PDF do DANFE</strong> da sua nota fiscal (NF-e, NFC-e ou NFS-e). O sistema traduz automaticamente todos os campos contábeis, cálculo de tributos (ICMS, IPI, PIS, COFINS, ST), tabela de produtos e gera auditoria com consistência matemática.
-            </p>
-          </div>
-        </section>
-
-        <!-- Zona de Upload Interativa -->
-        <section>
-          <div class="upload-card" id="fileDropZone" tabindex="0" role="button" aria-label="Área de envio de Nota Fiscal">
-            <input type="file" id="fileInput" accept=".xml,.pdf" style="display:none;" />
-            
-            <div class="upload-icon-container">
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
+        <!-- Área de Visualização 1: Interpretador de Notas Fiscais -->
+        <div id="interpretadorViewArea">
+          <!-- Banner de Boas-Vindas e Apresentação -->
+          <section class="hero-banner" id="initialHeroArea">
+            <div class="hero-text">
+              <h1>Interpretador Inteligente de Notas Fiscais</h1>
+              <p>
+                Envie o arquivo <strong>XML</strong> ou o <strong>PDF do DANFE</strong> da sua nota fiscal (NF-e, NFC-e ou NFS-e). O sistema traduz automaticamente todos os campos contábeis, cálculo de tributos (ICMS, IPI, PIS, COFINS, ST), tabela de produtos e gera auditoria com consistência matemática.
+              </p>
             </div>
+          </section>
 
-            <h2 class="upload-title">Arraste e solte sua Nota Fiscal aqui</h2>
-            <p class="upload-subtitle">ou clique para selecionar do seu computador</p>
-
-            <div class="format-badges">
-              <span class="format-badge xml">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="16 18 22 12 16 6"></polyline>
-                  <polyline points="8 6 2 12 8 18"></polyline>
+          <!-- Zona de Upload Interativa -->
+          <section>
+            <div class="upload-card" id="fileDropZone" tabindex="0" role="button" aria-label="Área de envio de Nota Fiscal">
+              <input type="file" id="fileInput" accept=".xml,.pdf" style="display:none;" />
+              
+              <div class="upload-icon-container">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
                 </svg>
-                XML (NF-e / NFC-e / NFS-e)
-              </span>
-              <span class="format-badge pdf">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                </svg>
-                PDF (DANFE Eletrônico)
-              </span>
-            </div>
+              </div>
 
-            <!-- Demonstração Rápida com 1 Clique -->
-            <div class="demo-samples-wrapper">
-              <span class="demo-sample-title">⚡ Testar com Notas de Exemplo:</span>
-              <button type="button" class="btn-sample" id="btnSampleComercio">
-                🛒 NF-e Varejo (Alimentos)
-              </button>
-              <button type="button" class="btn-sample" id="btnSampleIndustria">
-                🏭 NF-e Indústria (IPI & ST)
-              </button>
-              <button type="button" class="btn-sample" id="btnSampleSimples">
-                🏢 NF-e Simples Nacional
-              </button>
+              <h2 class="upload-title">Arraste e solte sua Nota Fiscal aqui</h2>
+              <p class="upload-subtitle">ou clique para selecionar do seu computador</p>
+
+              <div class="format-badges">
+                <span class="format-badge xml">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="16 18 22 12 16 6"></polyline>
+                    <polyline points="8 6 2 12 8 18"></polyline>
+                  </svg>
+                  XML (NF-e / NFC-e / NFS-e)
+                </span>
+                <span class="format-badge pdf">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  </svg>
+                  PDF (DANFE Eletrônico)
+                </span>
+              </div>
+
+              <!-- Demonstração Rápida com 1 Clique -->
+              <div class="demo-samples-wrapper">
+                <span class="demo-sample-title">⚡ Testar com Notas de Exemplo:</span>
+                <button type="button" class="btn-sample" id="btnSampleComercio">
+                  🛒 NF-e Varejo (Alimentos)
+                </button>
+                <button type="button" class="btn-sample" id="btnSampleIndustria">
+                  🏭 NF-e Indústria (IPI & ST)
+                </button>
+                <button type="button" class="btn-sample" id="btnSampleSimples">
+                  🏢 NF-e Simples Nacional
+                </button>
+              </div>
             </div>
+          </section>
+
+          <!-- Loader durante o parsing -->
+          <div class="parsing-loader" id="parsingLoader">
+            <div class="spinner"></div>
+            <span style="font-weight:600; color:#818cf8;">Interpretando estrutura e auditando tributos fiscais...</span>
           </div>
-        </section>
 
-        <!-- Loader durante o parsing -->
-        <div class="parsing-loader" id="parsingLoader">
-          <div class="spinner"></div>
-          <span style="font-weight:600; color:#818cf8;">Interpretando estrutura e auditando tributos fiscais...</span>
+          <!-- Área de Resultados (Preenchida dinamicamente pelo app.js) -->
+          <section class="nf-results-container" id="nfResultsArea" style="display:none;">
+            <!-- Conteúdo gerado dinamicamente -->
+          </section>
         </div>
 
-        <!-- Área de Resultados (Preenchida dinamicamente pelo app.js) -->
-        <section class="nf-results-container" id="nfResultsArea" style="display:none;">
-          <!-- Conteúdo gerado dinamicamente -->
-        </section>
+        <!-- Área de Visualização 2: Módulo de Escrituração Fiscal e SPED -->
+        <div id="escrituracaoViewArea" style="display:none;">
+          <!-- Conteúdo gerado dinamicamente pelo escrituracao-view.js -->
+        </div>
 
       </main>
     </div>
@@ -189,5 +203,6 @@
   <script src="js/sample-data.js"></script>
   <script src="js/export-utils.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/escrituracao-view.js"></script>
 </body>
 </html>

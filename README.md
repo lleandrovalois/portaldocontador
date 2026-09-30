@@ -47,44 +47,81 @@ Permite que o contador ou assistente fiscal envie notas fiscais em lote ou unit�
 
 ---
 
+## 🏛️ Módulo de Escrituração Fiscal & SPED
+
+> **Engine de Ingestão DF-e, Motor de Apuração (ICMS, IPI, PIS/COFINS) e Exportação SPED EFD.**
+
+O módulo de Escrituração Fiscal permite que escritórios contábeis processem múltiplos clientes (Multi-tenant) sob os regimes **Lucro Real**, **Lucro Presumido** e **Simples Nacional**, executando:
+1. **Ingestão Inteligente com De-Para:** Conversão automática de CFOPs de saída do fornecedor para CFOPs de entrada corretos (revenda, insumos, uso/consumo, ativo imobilizado) e tratamento de CSTs de crédito.
+2. **Motor de Apuração Não-Cumulativa & Cumulativa:**
+   - Fechamento mensal de ICMS próprio (Registro E110).
+   - Apuração de PIS/COFINS com suporte à **Tese do Século (Tema 69 STF)**, excluindo o ICMS destacado da base de cálculo das contribuições.
+   - Segregação de créditos por insumo e vedação expressa para despesas de uso/consumo.
+3. **Auditoria Pré-PVA com 10 Regras Fundamentais:** Verificação automática antes da importação no PVA da Receita Federal (C100 vs C170, Chave DV Módulo 11, CFOP territorialidade, CST x Alíquota, participantes e itens órfãos).
+4. **Gerador Oficial de SPED Fiscal:** Produção de arquivos `.txt` delimitados por pipes (`|`) para:
+   - **EFD ICMS IPI:** Blocos 0, C (C100, C170, C190), E (E100, E110, E116) e 9 (9900 totalizadores, 9999).
+   - **EFD-Contribuições:** Blocos 0, C, M (M200, M600) e 9.
+
+---
+
 ## 📂 Estrutura de Arquivos
 
 ```text
 portal-do-contador/
-├── index.html               # Interface principal e dashboard modular
+├── index.html                   # Interface do Portal com Interpretador e Módulo de Escrituração
 ├── css/
-│   └── style.css            # Design System (dark/light, glassmorphism, responsivo, print)
+│   └── style.css                # Design System com tema escuro/claro, glassmorphism e painel fiscal
 ├── js/
-│   ├── app.js               # Gerenciador de eventos, KPIs e renderização dinâmica
-│   ├── parser-xml.js        # Motor de interpretação de XML NF-e/NFC-e/NFS-e
-│   ├── parser-pdf.js        # Motor de interpretação de DANFE PDF
-│   ├── tax-helpers.js       # Dicionários de CFOP/CST, formatação BRL e auditor contábil
-│   ├── sample-data.js       # Exemplos reais embutidos para testes imediatos
-│   └── export-utils.js      # Gerador de CSV para Excel, JSON e relatórios
-├── vendor/
-│   ├── pdf.min.js           # Biblioteca PDF.js empacotada localmente (offline)
-│   └── pdf.worker.min.js    # Web Worker do PDF.js
-└── README.md                # Documentação do projeto
+│   ├── app.js                   # Controlador do Interpretador de Notas Fiscais
+│   ├── escrituracao-view.js     # Interface do Módulo de Escrituração Fiscal & SPED
+│   ├── parser-xml.js            # Parser de XML no browser
+│   ├── parser-pdf.js            # Parser de DANFE PDF
+│   └── tax-helpers.js           # Dicionários de CFOP/CST e cálculos
+├── database/
+│   └── init.sql                 # DDL PostgreSQL 15+ particionado, procedures e seeds
+├── server/                      # Backend Node.js do Motor Fiscal
+│   ├── package.json
+│   ├── test/
+│   │   └── fiscal-module.test.js # Bateria de testes automatizados do módulo fiscal
+│   └── src/
+│       ├── server.js            # Servidor Express com endpoints REST
+│       ├── db.js                # Conexão Pool com PostgreSQL
+│       └── services/
+│           ├── dfeParser.js     # Parser avançado de NF-e, CT-e e NFS-e
+│           ├── deParaService.js # Motor de regras e fallback de De-Para fiscal
+│           ├── taxCalculationEngine.js # Apuração ICMS, IPI, PIS/COFINS (Tema 69)
+│           ├── preValidatorService.js  # Motor de auditoria com as 10 regras da EFD
+│           ├── fiscalRepository.js     # Repositório com fallback em memória
+│           └── sped/
+│               ├── spedFormatter.js          # Formatador de pipes, datas e números
+│               ├── efdIcmsIpiGenerator.js    # Gerador de EFD ICMS IPI oficial
+│               └── efdContribuicoesGenerator.js # Gerador de EFD-Contribuições
+└── README.md
 ```
 
 ---
 
 ## 🛠️ Como Executar
 
-O projeto é construído em Vanilla HTML5, CSS3 e JavaScript moderno, sem depender de compilação complexa:
+### 1. Iniciar o Servidor Backend Fiscal (Node.js):
+```bash
+cd server
+npm install
+npm start
+# O servidor iniciará em http://localhost:3001
+```
 
-1. **Via Servidor Local (Recomendado):**
-   ```bash
-   npx serve .
-   # ou
-   python -m http.server 8080
-   ```
-2. Abra `http://localhost:8080` (ou a porta exibida) no navegador.
+### 2. Rodar a Bateria de Testes Automatizados:
+```bash
+cd server
+node test/fiscal-module.test.js
+```
 
----
+### 3. Executar o Frontend do Portal:
+```bash
+# Na raiz do projeto:
+npx serve .
+# Acesse http://localhost:8080 (ou a porta informada)
+```
+No menu lateral, clique em **"🏛️ Escrituração & SPED"** para alternar para o módulo fiscal completo.
 
-## 🗺️ Próximas Ferramentas no Roadmap do Portal
-
-- [ ] **Módulo 2: Calculadora de Impostos:** Simulação de DAS (Simples Nacional - Anexos I a V), Lucro Presumido e Fator R.
-- [ ] **Módulo 3: Agenda Fiscal e Calendário de Obrigações:** Prazos de DCTF, EFD-Reinf, SPED Fiscal, DAS e parcelamentos.
-- [ ] **Módulo 4: Comparador e Auditor Cruzado de XMLs:** Comparação entre o pedido de compra e o XML do fornecedor para identificar divergências de preços ou alíquotas.

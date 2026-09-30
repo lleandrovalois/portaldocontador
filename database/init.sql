@@ -249,36 +249,22 @@ CREATE TABLE IF NOT EXISTS apuracoes_mensais (
 );
 
 -- ============================================================================
--- DADOS INICIAIS (SEED) PARA DEMONSTRAÇÃO E TESTES IMEDIATOS
+-- DADOS INICIAIS (BASE LIMPA PARA POPULAÇÃO DO SISTEMA)
 -- ============================================================================
 
+-- Tenant Principal Base
 INSERT INTO tenants (id, razao_social, nome_fantasia, cnpj)
 VALUES 
-    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Escritório Contábil Alfa & Associados', 'Alfa Contabilidade', '12345678000195')
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Meu Escritório Contábil', 'Escritório Contábil', '00000000000191')
 ON CONFLICT (cnpj) DO NOTHING;
 
+-- Empresa Inicial Ativa (Pronta para personalização ou novos cadastros de clientes)
 INSERT INTO empresas (id, tenant_id, razao_social, nome_fantasia, cnpj, inscricao_estadual, codigo_municipio_ibge, uf, regime_tributario, perfil_sped)
 VALUES 
-    ('b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Comércio Distribuidor Paulistano Ltda', 'Distribuidora Paulistano', '28192837000109', '112233445566', '3550308', 'SP', 'LUCRO_REAL', 'A'),
-    ('c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Varejo Bom Preço Alimentos Eireli', 'Supermercado Bom Preço', '98765432000188', '998877665544', '3550308', 'SP', 'LUCRO_PRESUMIDO', 'A'),
-    ('d3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Padaria & Confeitaria Sabor Ltda ME', 'Sabor da Vila', '44556677000122', '334455667788', '3550308', 'SP', 'SIMPLES_NACIONAL', 'B')
+    ('b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Minha Empresa Cliente Ltda', 'Minha Empresa', '00000000000100', 'ISENTO', '3550308', 'SP', 'LUCRO_PRESUMIDO', 'A')
 ON CONFLICT DO NOTHING;
 
--- Participantes de Exemplo
-INSERT INTO participantes (id, tenant_id, codigo_participante, nome, cnpj_cpf, inscricao_estadual, codigo_municipio_ibge, uf)
-VALUES
-    ('e4eebc99-9c0b-4ef8-bb6d-6bb9bd380e55', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'FORN001', 'Indústria Química Nacional S.A.', '01234567000189', '123456789012', '3550308', 'SP'),
-    ('f5eebc99-9c0b-4ef8-bb6d-6bb9bd380f66', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'CLI001', 'Supermercados Estrela do Sul Ltda', '55667788000144', '456789012345', '4106902', 'PR')
-ON CONFLICT DO NOTHING;
-
--- Produtos de Exemplo
-INSERT INTO produtos_servicos (id, tenant_id, empresa_id, codigo_item, descricao, unidade_medida, tipo_item, ncm, aliquota_icms_padrao)
-VALUES
-    ('11111111-1111-1111-1111-111111111111', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'PROD001', 'Solvente Industrial Alifático 20L', 'UN', '00', '29011000', 18.0000),
-    ('22222222-2222-2222-2222-222222222222', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', 'PROD002', 'Resina Termoplástica Especial 50kg', 'SC', '01', '39011010', 18.0000)
-ON CONFLICT DO NOTHING;
-
--- Regras Fiscais De-Para Iniciais
+-- Regras Fiscais De-Para Padronizadas
 INSERT INTO regras_fiscais_depara (tenant_id, empresa_id, cfop_origem, destinacao, cfop_escriturado, cst_icms_escriturado, cst_pis_escriturado, cst_cofins_escriturado, credita_icms, credita_ipi, credita_pis_cofins)
 VALUES
     ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22', '5102', 'REVENDA', '1102', '00', '50', '50', true, false, true),

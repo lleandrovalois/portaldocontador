@@ -6,7 +6,8 @@
 
 (function () {
   // Chave do localStorage para persistência autônoma no navegador
-  const STORAGE_KEY = 'portal_contador_fiscal_store_v2';
+  // Chave do localStorage para persistência autônoma no navegador (v4 Limpo)
+  const STORAGE_KEY = 'portal_contador_fiscal_store_v4_clean';
 
   // Estado Geral da Escrituração
   const state = {
@@ -27,217 +28,24 @@
     apiBase: 'http://localhost:3001/api/v1'
   };
 
-  // Empresas Padrão Iniciais
+  // Empresa Inicial Base (Pronta para uso ou novos cadastros de clientes)
   const defaultEmpresas = [
     {
       id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22',
       tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-      razao_social: 'Comércio Distribuidor Paulistano Ltda',
-      nome_fantasia: 'Distribuidora Paulistano',
-      cnpj: '28192837000109',
-      inscricao_estadual: '112233445566',
-      codigo_municipio_ibge: '3550308',
-      uf: 'SP',
-      regime_tributario: 'LUCRO_REAL',
-      perfil_sped: 'A'
-    },
-    {
-      id: 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33',
-      tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-      razao_social: 'Varejo Bom Preço Alimentos Eireli',
-      nome_fantasia: 'Supermercado Bom Preço',
-      cnpj: '98765432000188',
-      inscricao_estadual: '998877665544',
+      razao_social: 'Minha Empresa Cliente Ltda',
+      nome_fantasia: 'Minha Empresa',
+      cnpj: '00000000000100',
+      inscricao_estadual: 'ISENTO',
       codigo_municipio_ibge: '3550308',
       uf: 'SP',
       regime_tributario: 'LUCRO_PRESUMIDO',
       perfil_sped: 'A'
-    },
-    {
-      id: 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44',
-      tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-      razao_social: 'Padaria & Confeitaria Sabor Ltda ME',
-      nome_fantasia: 'Sabor da Vila',
-      cnpj: '44556677000122',
-      inscricao_estadual: '334455667788',
-      codigo_municipio_ibge: '3550308',
-      uf: 'SP',
-      regime_tributario: 'SIMPLES_NACIONAL',
-      perfil_sped: 'B'
     }
   ];
 
-  // Documentos Iniciais de Demonstração
-  const defaultDocs = [
-    {
-      id: 'doc-saida-01',
-      numero: 10420,
-      serie: '1',
-      modelo: '55',
-      chave_acesso: '35260128192837000109550010000104201000104204',
-      tipo_operacao: 'SAIDA',
-      tipo_emissao: 'PROPRIA',
-      situacao_documento: '00',
-      data_emissao: '2026-01-12',
-      natureza_operacao: 'Venda de Produção do Estabelecimento',
-      participante_codigo: 'CLI001',
-      participante_nome: 'Supermercados Estrela do Sul Ltda',
-      valor_total_documento: 12500.00,
-      totais: {
-        valor_produtos: 12500.00,
-        valor_desconto: 0.00,
-        valor_frete: 0.00,
-        valor_seguro: 0.00,
-        valor_outras_despesas: 0.00,
-        valor_total_documento: 12500.00,
-        valor_bc_icms: 12500.00,
-        valor_icms: 2250.00,
-        valor_pis: 206.25,
-        valor_cofins: 950.00
-      },
-      itens: [
-        {
-          numero_item: 1,
-          codigo_item: 'PROD001',
-          descricao: 'Solvente Industrial Alifático 20L',
-          ncm: '29011000',
-          unidade_medida: 'UN',
-          quantidade_comercial: 50,
-          valor_unitario: 250.00,
-          valor_bruto: 12500.00,
-          valor_desconto: 0,
-          cfop_origem: '5102',
-          cfop_escriturado: '5102',
-          cst_icms: '00',
-          valor_bc_icms: 12500.00,
-          aliquota_icms: 18.00,
-          valor_icms: 2250.00,
-          cst_pis: '01',
-          valor_bc_pis: 12500.00,
-          aliquota_pis: 1.65,
-          valor_pis: 206.25,
-          cst_cofins: '01',
-          valor_bc_cofins: 12500.00,
-          aliquota_cofins: 7.60,
-          valor_cofins: 950.00
-        }
-      ]
-    },
-    {
-      id: 'doc-entrada-01',
-      numero: 8840,
-      serie: '1',
-      modelo: '55',
-      chave_acesso: '35260101234567000189550010000088401000008842',
-      tipo_operacao: 'ENTRADA',
-      tipo_emissao: 'TERCEIROS',
-      situacao_documento: '00',
-      data_emissao: '2026-01-08',
-      natureza_operacao: 'Compra de Insumo Industrial',
-      participante_codigo: 'FORN001',
-      participante_nome: 'Indústria Química Nacional S.A.',
-      valor_total_documento: 6000.00,
-      totais: {
-        valor_produtos: 6000.00,
-        valor_desconto: 0.00,
-        valor_frete: 0.00,
-        valor_seguro: 0.00,
-        valor_outras_despesas: 0.00,
-        valor_total_documento: 6000.00,
-        valor_bc_icms: 6000.00,
-        valor_icms: 1080.00,
-        valor_pis: 99.00,
-        valor_cofins: 456.00
-      },
-      itens: [
-        {
-          numero_item: 1,
-          codigo_item: 'PROD002',
-          descricao: 'Resina Termoplástica Especial 50kg',
-          ncm: '39011010',
-          unidade_medida: 'SC',
-          quantidade_comercial: 40,
-          valor_unitario: 150.00,
-          valor_bruto: 6000.00,
-          valor_desconto: 0,
-          destinacao_item: 'INSUMO',
-          credita_icms: true,
-          credita_pis_cofins: true,
-          cfop_origem: '5101',
-          cfop_escriturado: '1101',
-          cst_icms: '00',
-          valor_bc_icms: 6000.00,
-          aliquota_icms: 18.00,
-          valor_icms: 1080.00,
-          cst_pis: '50',
-          valor_bc_pis: 6000.00,
-          aliquota_pis: 1.65,
-          valor_pis: 99.00,
-          cst_cofins: '50',
-          valor_bc_cofins: 6000.00,
-          aliquota_cofins: 7.60,
-          valor_cofins: 456.00
-        }
-      ]
-    },
-    {
-      id: 'doc-entrada-02',
-      numero: 5510,
-      serie: '1',
-      modelo: '55',
-      chave_acesso: '35260101234567000189550010000055101000005517',
-      tipo_operacao: 'ENTRADA',
-      tipo_emissao: 'TERCEIROS',
-      situacao_documento: '00',
-      data_emissao: '2026-01-20',
-      natureza_operacao: 'Compra de Material para Escritório',
-      participante_codigo: 'FORN001',
-      participante_nome: 'Indústria Química Nacional S.A.',
-      valor_total_documento: 800.00,
-      totais: {
-        valor_produtos: 800.00,
-        valor_desconto: 0.00,
-        valor_frete: 0.00,
-        valor_seguro: 0.00,
-        valor_outras_despesas: 0.00,
-        valor_total_documento: 800.00,
-        valor_bc_icms: 0.00,
-        valor_icms: 0.00,
-        valor_pis: 0.00,
-        valor_cofins: 0.00
-      },
-      itens: [
-        {
-          numero_item: 1,
-          codigo_item: 'PROD_CONS',
-          descricao: 'Material de Limpeza e Papelaria Diversos',
-          ncm: '48025610',
-          unidade_medida: 'UN',
-          quantidade_comercial: 1,
-          valor_unitario: 800.00,
-          valor_bruto: 800.00,
-          valor_desconto: 0,
-          destinacao_item: 'USO_CONSUMO',
-          credita_icms: false,
-          credita_pis_cofins: false,
-          cfop_origem: '5102',
-          cfop_escriturado: '1556',
-          cst_icms: '90',
-          valor_bc_icms: 0.00,
-          aliquota_icms: 0.00,
-          valor_icms: 0.00,
-          cst_pis: '70',
-          valor_bc_pis: 0.00,
-          aliquota_pis: 0.00,
-          valor_pis: 0.00,
-          cst_cofins: '70',
-          valor_bc_cofins: 0.00,
-          aliquota_cofins: 0.00,
-          valor_cofins: 0.00
-        }
-      ]
-    }
-  ];
+  // Documentos Iniciais: Sistema 100% limpo para alimentação pelo usuário
+  const defaultDocs = [];
 
   // 1. Inicialização do Módulo
   function init() {
@@ -248,34 +56,34 @@
 
   function loadFromLocalStorage() {
     try {
+      // Purga dados mockados antigos de versões anteriores no navegador do usuário
+      localStorage.removeItem('portal_contador_fiscal_store');
+      localStorage.removeItem('portal_contador_fiscal_store_v2');
+      localStorage.removeItem('portal_contador_fiscal_store_v3');
+
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         state.empresas = parsed.empresas && parsed.empresas.length > 0 ? parsed.empresas : defaultEmpresas;
-        state.documentos = parsed.documentos && parsed.documentos.length > 0 ? parsed.documentos : defaultDocs;
+        state.documentos = Array.isArray(parsed.documentos) ? parsed.documentos : [];
         state.anoMes = parsed.anoMes || '2026-01';
         state.empresaSelecionada = state.empresas.find(e => e.id === parsed.selectedEmpresaId) || state.empresas[0];
       } else {
         state.empresas = [...defaultEmpresas];
-        state.documentos = [...defaultDocs];
+        state.documentos = [];
+        state.anoMes = '2026-01';
         state.empresaSelecionada = state.empresas[0];
       }
     } catch (e) {
       console.warn('Erro ao carregar do localStorage:', e);
       state.empresas = [...defaultEmpresas];
-      state.documentos = [...defaultDocs];
+      state.documentos = [];
+      state.anoMes = '2026-01';
       state.empresaSelecionada = state.empresas[0];
     }
 
-    state.participantes = [
-      { codigo_participante: 'CLI001', nome: 'Supermercados Estrela do Sul Ltda', cnpj_cpf: '55667788000144', uf: 'SP', codigo_municipio_ibge: '3550308', inscricao_estadual: '456789012345' },
-      { codigo_participante: 'FORN001', nome: 'Indústria Química Nacional S.A.', cnpj_cpf: '01234567000189', uf: 'SP', codigo_municipio_ibge: '3550308', inscricao_estadual: '123456789012' }
-    ];
-    state.produtos = [
-      { codigo_item: 'PROD001', descricao: 'Solvente Industrial Alifático 20L', unidade_medida: 'UN', tipo_item: '00', ncm: '29011000' },
-      { codigo_item: 'PROD002', descricao: 'Resina Termoplástica Especial 50kg', unidade_medida: 'SC', tipo_item: '01', ncm: '39011010' },
-      { codigo_item: 'PROD_CONS', descricao: 'Material de Limpeza e Papelaria Diversos', unidade_medida: 'UN', tipo_item: '07', ncm: '48025610' }
-    ];
+    state.participantes = [];
+    state.produtos = [];
   }
 
   function saveToLocalStorage() {
@@ -1679,6 +1487,40 @@
     return `${base43}${dv}`;
   }
 
+  function obterParticipantesEProdutosAtuais() {
+    const partsMap = new Map();
+    const prodsMap = new Map();
+
+    for (const doc of state.documentos) {
+      if (doc.participante_codigo && !partsMap.has(doc.participante_codigo)) {
+        partsMap.set(doc.participante_codigo, {
+          codigo_participante: doc.participante_codigo,
+          nome: doc.participante_nome || 'Cliente / Fornecedor',
+          cnpj_cpf: (doc.participante_cnpj_cpf || '00000000000000').replace(/\D/g, ''),
+          uf: doc.participante_uf || state.empresaSelecionada.uf,
+          codigo_municipio_ibge: state.empresaSelecionada.codigo_municipio_ibge,
+          inscricao_estadual: 'ISENTO'
+        });
+      }
+      for (const it of (doc.itens || [])) {
+        if (it.codigo_item && !prodsMap.has(it.codigo_item)) {
+          prodsMap.set(it.codigo_item, {
+            codigo_item: it.codigo_item,
+            descricao: it.descricao || 'Item Mercadoria',
+            unidade_medida: it.unidade_medida || 'UN',
+            tipo_item: '00',
+            ncm: (it.ncm || '00000000').replace(/\D/g, '').padEnd(8, '0')
+          });
+        }
+      }
+    }
+
+    return {
+      participantes: Array.from(partsMap.values()),
+      produtos: Array.from(prodsMap.values())
+    };
+  }
+
   function gerarSpedIcmsTxt() {
     const emp = state.empresaSelecionada;
     const dtIni = '01012026';
@@ -1690,13 +1532,15 @@
     lines.push(`|0005|${emp.nome_fantasia || emp.razao_social}|01001000|Avenida Principal|100||Centro|1133334444|fiscal@empresa.com.br|`);
     lines.push('|0100|Contador Responsavel|12345678909|CRC-SP 123456/O|12345678000195|01001000|Rua dos Contabilistas|50||Consolação|1133335555||contador@portal.com.br|3550308|');
 
-    for (const p of state.participantes) {
+    const { participantes, produtos } = obterParticipantesEProdutosAtuais();
+
+    for (const p of participantes) {
       lines.push(`|0150|${p.codigo_participante}|${p.nome}|1058|${p.cnpj_cpf.replace(/\D/g, '')}||${p.inscricao_estadual.replace(/\D/g, '')}|${p.codigo_municipio_ibge}||Rua Comercial|S/N||Centro|`);
     }
 
     lines.push('|0190|UN|Unidade|');
     lines.push('|0190|SC|Saca|');
-    for (const prod of state.produtos) {
+    for (const prod of produtos) {
       lines.push(`|0200|${prod.codigo_item}|${prod.descricao}|||${prod.unidade_medida}|${prod.tipo_item}|${prod.ncm.replace(/\D/g, '')}||||18,00||`);
     }
     lines.push(`|0990|${lines.length + 1}|`);

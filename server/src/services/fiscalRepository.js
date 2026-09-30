@@ -19,91 +19,19 @@ export class FiscalRepository {
         {
           id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22',
           tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-          razao_social: 'Comércio Distribuidor Paulistano Ltda',
-          nome_fantasia: 'Distribuidora Paulistano',
-          cnpj: '28192837000109',
-          inscricao_estadual: '112233445566',
-          codigo_municipio_ibge: '3550308',
-          uf: 'SP',
-          regime_tributario: 'LUCRO_REAL',
-          perfil_sped: 'A',
-          ind_atividade: '0'
-        },
-        {
-          id: 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380c33',
-          tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-          razao_social: 'Varejo Bom Preço Alimentos Eireli',
-          nome_fantasia: 'Supermercado Bom Preço',
-          cnpj: '98765432000188',
-          inscricao_estadual: '998877665544',
+          razao_social: 'Minha Empresa Cliente Ltda',
+          nome_fantasia: 'Minha Empresa',
+          cnpj: '00000000000100',
+          inscricao_estadual: 'ISENTO',
           codigo_municipio_ibge: '3550308',
           uf: 'SP',
           regime_tributario: 'LUCRO_PRESUMIDO',
           perfil_sped: 'A',
           ind_atividade: '0'
-        },
-        {
-          id: 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380d44',
-          tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-          razao_social: 'Padaria & Confeitaria Sabor Ltda ME',
-          nome_fantasia: 'Sabor da Vila',
-          cnpj: '44556677000122',
-          inscricao_estadual: '334455667788',
-          codigo_municipio_ibge: '3550308',
-          uf: 'SP',
-          regime_tributario: 'SIMPLES_NACIONAL',
-          perfil_sped: 'B',
-          ind_atividade: '0'
         }
       ],
-      participantes: [
-        {
-          id: 'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380e55',
-          tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-          codigo_participante: 'FORN001',
-          nome: 'Indústria Química Nacional S.A.',
-          cnpj_cpf: '01234567000189',
-          inscricao_estadual: '123456789012',
-          codigo_municipio_ibge: '3550308',
-          uf: 'SP',
-          codigo_pais: '1058'
-        },
-        {
-          id: 'f5eebc99-9c0b-4ef8-bb6d-6bb9bd380f66',
-          tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-          codigo_participante: 'CLI001',
-          nome: 'Supermercados Estrela do Sul Ltda',
-          cnpj_cpf: '55667788000144',
-          inscricao_estadual: '456789012345',
-          codigo_municipio_ibge: '4106902',
-          uf: 'PR',
-          codigo_pais: '1058'
-        }
-      ],
-      produtos: [
-        {
-          id: '11111111-1111-1111-1111-111111111111',
-          tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-          empresa_id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22',
-          codigo_item: 'PROD001',
-          descricao: 'Solvente Industrial Alifático 20L',
-          unidade_medida: 'UN',
-          tipo_item: '00',
-          ncm: '29011000',
-          aliquota_icms_padrao: 18.0
-        },
-        {
-          id: '22222222-2222-2222-2222-222222222222',
-          tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-          empresa_id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22',
-          codigo_item: 'PROD002',
-          descricao: 'Resina Termoplástica Especial 50kg',
-          unidade_medida: 'SC',
-          tipo_item: '01',
-          ncm: '39011010',
-          aliquota_icms_padrao: 18.0
-        }
-      ],
+      participantes: [],
+      produtos: [],
       regrasDePara: [
         {
           id: 'r1',

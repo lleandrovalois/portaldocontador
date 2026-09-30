@@ -1,26 +1,34 @@
 /**
- * Módulo de Escrituração Fiscal e SPED - Interface do Portal do Contador
- * Gerencia a navegação, seleção de empresas/regimes, apuração tributária,
- * auditoria pré-PVA (10 regras) e exportação de arquivos EFD.
+ * Portal do Contador - Módulo de Escrituração Fiscal e SPED
+ * Versão 2.0: Interface Reestruturada em Abas, Alimentação por Upload de Lotes XML,
+ * Lançamento Manual, Apuração Interativa, Auditoria Pré-PVA e Exportação SPED.
  */
 
 (function () {
-  // Estado local da escrituração
+  // Chave do localStorage para persistência autônoma no navegador
+  const STORAGE_KEY = 'portal_contador_fiscal_store_v2';
+
+  // Estado Geral da Escrituração
   const state = {
     tenantId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    activeTab: 'tab-dashboard', // 'tab-dashboard', 'tab-documentos', 'tab-auditoria', 'tab-sped', 'tab-depara'
     empresaSelecionada: null,
     anoMes: '2026-01',
+    empresas: [],
     documentos: [],
     participantes: [],
     produtos: [],
+    regrasDePara: [],
     apuracao: null,
     auditoria: null,
     serverOnline: false,
+    filtroOperacao: 'TODOS',
+    termoBusca: '',
     apiBase: 'http://localhost:3001/api/v1'
   };
 
-  // Empresas pré-configuradas (compatíveis com o banco de dados)
-  const empresasPadrao = [
+  // Empresas Padrão Iniciais
+  const defaultEmpresas = [
     {
       id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380b22',
       tenant_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
@@ -59,8 +67,8 @@
     }
   ];
 
-  // Documentos de Exemplo do Mês 2026-01
-  const documentosDemonstracao = [
+  // Documentos Iniciais de Demonstração
+  const defaultDocs = [
     {
       id: 'doc-saida-01',
       numero: 10420,
@@ -231,48 +239,67 @@
     }
   ];
 
-  // Inicialização do Módulo
+  // 1. Inicialização do Módulo
   function init() {
+    loadFromLocalStorage();
     setupSidebarNavigation();
-    state.empresaSelecionada = empresasPadrao[0];
-    state.documentos = [...documentosDemonstracao];
-    state.participantes = [
-      {
-        codigo_participante: 'CLI001',
-        nome: 'Supermercados Estrela do Sul Ltda',
-        cnpj_cpf: '55667788000144',
-        inscricao_estadual: '456789012345',
-        uf: 'SP',
-        codigo_municipio_ibge: '3550308'
-      },
-      {
-        codigo_participante: 'FORN001',
-        nome: 'Indústria Química Nacional S.A.',
-        cnpj_cpf: '01234567000189',
-        inscricao_estadual: '123456789012',
-        uf: 'SP',
-        codigo_municipio_ibge: '3550308'
+    checarStatusBackend();
+  }
+
+  function loadFromLocalStorage() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        state.empresas = parsed.empresas && parsed.empresas.length > 0 ? parsed.empresas : defaultEmpresas;
+        state.documentos = parsed.documentos && parsed.documentos.length > 0 ? parsed.documentos : defaultDocs;
+        state.anoMes = parsed.anoMes || '2026-01';
+        state.empresaSelecionada = state.empresas.find(e => e.id === parsed.selectedEmpresaId) || state.empresas[0];
+      } else {
+        state.empresas = [...defaultEmpresas];
+        state.documentos = [...defaultDocs];
+        state.empresaSelecionada = state.empresas[0];
       }
+    } catch (e) {
+      console.warn('Erro ao carregar do localStorage:', e);
+      state.empresas = [...defaultEmpresas];
+      state.documentos = [...defaultDocs];
+      state.empresaSelecionada = state.empresas[0];
+    }
+
+    state.participantes = [
+      { codigo_participante: 'CLI001', nome: 'Supermercados Estrela do Sul Ltda', cnpj_cpf: '55667788000144', uf: 'SP', codigo_municipio_ibge: '3550308', inscricao_estadual: '456789012345' },
+      { codigo_participante: 'FORN001', nome: 'Indústria Química Nacional S.A.', cnpj_cpf: '01234567000189', uf: 'SP', codigo_municipio_ibge: '3550308', inscricao_estadual: '123456789012' }
     ];
     state.produtos = [
       { codigo_item: 'PROD001', descricao: 'Solvente Industrial Alifático 20L', unidade_medida: 'UN', tipo_item: '00', ncm: '29011000' },
       { codigo_item: 'PROD002', descricao: 'Resina Termoplástica Especial 50kg', unidade_medida: 'SC', tipo_item: '01', ncm: '39011010' },
       { codigo_item: 'PROD_CONS', descricao: 'Material de Limpeza e Papelaria Diversos', unidade_medida: 'UN', tipo_item: '07', ncm: '48025610' }
     ];
+  }
 
-    checarStatusBackend();
+  function saveToLocalStorage() {
+    try {
+      const payload = {
+        empresas: state.empresas,
+        documentos: state.documentos,
+        selectedEmpresaId: state.empresaSelecionada ? state.empresaSelecionada.id : null,
+        anoMes: state.anoMes
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {
+      console.warn('Erro ao salvar no localStorage:', e);
+    }
   }
 
   async function checarStatusBackend() {
     try {
-      const res = await fetch(`${state.apiBase}/health`, { signal: AbortSignal.timeout(1500) });
+      const res = await fetch(`${state.apiBase}/health`, { signal: AbortSignal.timeout(1200) });
       if (res.ok) {
         state.serverOnline = true;
-        console.log('✅ [Portal do Contador] Backend Fiscal Engine conectado.');
       }
     } catch (e) {
       state.serverOnline = false;
-      console.log('ℹ️ [Portal do Contador] Backend offline, executando com motor embarcado no browser.');
     }
   }
 
@@ -293,11 +320,8 @@
           renderEscrituracaoModule();
         }
 
-        // Atualizar breadcrumb
         const breadcrumbEl = document.querySelector('.breadcrumb-active');
-        if (breadcrumbEl) {
-          breadcrumbEl.textContent = 'Módulo de Escrituração Fiscal & SPED';
-        }
+        if (breadcrumbEl) breadcrumbEl.textContent = 'Módulo de Escrituração Fiscal & SPED';
       });
     }
 
@@ -310,437 +334,1200 @@
         if (interpretadorView) interpretadorView.style.display = 'block';
 
         const breadcrumbEl = document.querySelector('.breadcrumb-active');
-        if (breadcrumbEl) {
-          breadcrumbEl.textContent = 'Interpretador de Notas Fiscais';
-        }
+        if (breadcrumbEl) breadcrumbEl.textContent = 'Interpretador de Notas Fiscais';
       });
     }
   }
 
+  // 2. Renderização Central do Módulo
   function renderEscrituracaoModule() {
     const container = document.getElementById('escrituracaoViewArea');
     if (!container) return;
 
-    // Se ainda não foi calculado, apura os valores padrão
-    if (!state.apuracao) {
-      calcularApuracaoLocal();
-    }
-    if (!state.auditoria) {
-      executarAuditoriaLocal();
-    }
+    calcularApuracao();
+    executarAuditoria();
 
-    const emp = state.empresaSelecionada;
+    const emp = state.empresaSelecionada || state.empresas[0];
     const ap = state.apuracao;
     const aud = state.auditoria;
 
     container.innerHTML = `
-      <!-- Cabeçalho do Módulo & Seletor Multi-Tenant -->
-      <section class="fiscal-header-card">
-        <div class="fiscal-header-info">
-          <div class="fiscal-badge-regime ${emp.regime_tributario.toLowerCase()}">
-            ${emp.regime_tributario.replace('_', ' ')}
-          </div>
-          <h2 class="fiscal-title">${emp.razao_social}</h2>
-          <div class="fiscal-meta">
-            <span><strong>CNPJ:</strong> ${formatCnpj(emp.cnpj)}</span>
-            <span><strong>IE:</strong> ${emp.inscricao_estadual}</span>
-            <span><strong>UF:</strong> ${emp.uf}</span>
-            <span><strong>Perfil SPED:</strong> ${emp.perfil_sped}</span>
-            <span><strong>Status Backend:</strong> ${state.serverOnline ? '<span class="status-online">🟢 Online (Porta 3001)</span>' : '<span class="status-offline">🔵 Engine Local</span>'}</span>
-          </div>
-        </div>
-
-        <div class="fiscal-controls">
-          <div class="control-group">
-            <label for="selectEmpresaFiscal">Empresa / Cliente:</label>
-            <select id="selectEmpresaFiscal" class="fiscal-select">
-              ${empresasPadrao.map(e => `
-                <option value="${e.id}" ${e.id === emp.id ? 'selected' : ''}>
-                  ${e.nome_fantasia || e.razao_social} (${e.regime_tributario})
-                </option>
-              `).join('')}
-            </select>
-          </div>
-
-          <div class="control-group">
-            <label for="selectPeriodoFiscal">Período de Apuração:</label>
-            <input type="month" id="selectPeriodoFiscal" class="fiscal-input-date" value="${state.anoMes}" />
-          </div>
-
-          <div class="control-buttons">
-            <button type="button" class="btn-primary" id="btnRecalcularApuracao">
-              🔄 Recalcular Apuração
-            </button>
-            <button type="button" class="btn-auditoria" id="btnExecutarAuditoria">
-              🛡️ Auditar Pré-PVA
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- KPIs da Apuração Mensal -->
-      <section class="fiscal-kpi-grid">
-        <div class="kpi-card icms">
-          <div class="kpi-header">
-            <span class="kpi-tag">ICMS Próprio (E110)</span>
-            <span class="kpi-icon">💰</span>
-          </div>
-          <div class="kpi-value">R$ ${formatBrl(ap.icms.imposto_a_recolher)}</div>
-          <div class="kpi-sub">
-            <span>Débitos (Saídas): <strong>R$ ${formatBrl(ap.icms.total_debitos)}</strong></span>
-            <span>Créditos (Entradas): <strong>R$ ${formatBrl(ap.icms.total_creditos)}</strong></span>
-            ${ap.icms.saldo_credor_transportar > 0 ? `<span class="badge-credito">Saldo Credor a Transportar: R$ ${formatBrl(ap.icms.saldo_credor_transportar)}</span>` : ''}
+      <!-- Workspace Header -->
+      <section class="fiscal-header-workspace">
+        <div class="workspace-brand">
+          <div class="company-avatar">${emp.razao_social.charAt(0)}</div>
+          <div class="company-details">
+            <div class="company-headline">
+              <h2>${emp.nome_fantasia || emp.razao_social}</h2>
+              <span class="regime-badge ${emp.regime_tributario.toLowerCase()}">
+                ${emp.regime_tributario.replace('_', ' ')}
+              </span>
+            </div>
+            <div class="company-meta-tags">
+              <span><strong>CNPJ:</strong> ${formatCnpj(emp.cnpj)}</span>
+              <span><strong>IE:</strong> ${emp.inscricao_estadual}</span>
+              <span><strong>UF:</strong> ${emp.uf}</span>
+              <span><strong>Perfil SPED:</strong> ${emp.perfil_sped}</span>
+              <span><strong>Ambiente:</strong> ${state.serverOnline ? '<span class="status-badge online">● API Online</span>' : '<span class="status-badge offline">● Motor Web Local</span>'}</span>
+            </div>
           </div>
         </div>
 
-        <div class="kpi-card pis">
-          <div class="kpi-header">
-            <span class="kpi-tag">PIS/PASEP (M200)</span>
-            <span class="kpi-icon">📈</span>
+        <div class="workspace-actions">
+          <div class="select-field-box">
+            <label>Empresa Ativa</label>
+            <div class="empresa-select-row">
+              <select id="selectEmpresaFiscal" class="form-select-sm">
+                ${state.empresas.map(e => `
+                  <option value="${e.id}" ${e.id === emp.id ? 'selected' : ''}>
+                    ${e.nome_fantasia || e.razao_social} (${e.regime_tributario})
+                  </option>
+                `).join('')}
+              </select>
+              <button type="button" class="btn-icon-add" id="btnOpenNovaEmpresaModal" title="Cadastrar Nova Empresa">+</button>
+            </div>
           </div>
-          <div class="kpi-value">R$ ${formatBrl(ap.pis.imposto_a_recolher)}</div>
-          <div class="kpi-sub">
-            <span>Alíquota: <strong>${ap.pis.aliquota_aplicada}%</strong> (${ap.pis.regime})</span>
-            ${ap.pis.total_icms_excluido_tema69 > 0 ? `<span class="badge-tema69">⚖️ Tema 69 STF: -R$ ${formatBrl(ap.pis.total_icms_excluido_tema69)} da Base</span>` : ''}
-          </div>
-        </div>
 
-        <div class="kpi-card cofins">
-          <div class="kpi-header">
-            <span class="kpi-tag">COFINS (M600)</span>
-            <span class="kpi-icon">📊</span>
-          </div>
-          <div class="kpi-value">R$ ${formatBrl(ap.cofins.imposto_a_recolher)}</div>
-          <div class="kpi-sub">
-            <span>Alíquota: <strong>${ap.cofins.aliquota_aplicada}%</strong></span>
-            <span>Créditos Insumos: <strong>R$ ${formatBrl(ap.cofins.total_creditos)}</strong></span>
-          </div>
-        </div>
-
-        <div class="kpi-card auditoria-status ${aud.aprovado_para_pva ? 'aprovado' : 'reprovado'}">
-          <div class="kpi-header">
-            <span class="kpi-tag">Auditoria Pré-PVA</span>
-            <span class="kpi-icon">${aud.aprovado_para_pva ? '✅' : '⚠️'}</span>
-          </div>
-          <div class="kpi-value status-text">${aud.aprovado_para_pva ? '100% Consistente' : `${aud.erros_impeditivos} Inconsistências`}</div>
-          <div class="kpi-sub">
-            <span>10 Regras Oficiais Checadas</span>
-            <button type="button" class="btn-link-auditoria" id="btnVerDetalhesAuditoria">
-              Ver Diagnóstico Completo →
-            </button>
+          <div class="select-field-box">
+            <label>Período Fiscal</label>
+            <div class="periodo-navigator">
+              <button type="button" class="btn-nav-mes" id="btnMesAnterior">◀</button>
+              <input type="month" id="inputPeriodoFiscal" value="${state.anoMes}" class="form-input-month" />
+              <button type="button" class="btn-nav-mes" id="btnMesPosterior">▶</button>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Barra de Exportação SPED Oficial -->
-      <section class="sped-export-banner">
-        <div class="sped-export-left">
-          <div class="sped-icon">🏛️</div>
-          <div>
-            <h3>Gerador de Arquivos Digitais SPED (Layouts 2024–2026)</h3>
-            <p>Arquivos prontos para transmissão e validação no PVA da Receita Federal e SEFAZ.</p>
+      <!-- Barra de Abas (Sub-Nav Moderna) -->
+      <nav class="fiscal-tabs-bar">
+        <button type="button" class="tab-btn ${state.activeTab === 'tab-dashboard' ? 'active' : ''}" data-tab="tab-dashboard">
+          📊 Visão Geral & Apuração
+        </button>
+        <button type="button" class="tab-btn ${state.activeTab === 'tab-documentos' ? 'active' : ''}" data-tab="tab-documentos">
+          📥 Ingestão & Lançamentos <span class="tab-counter">${state.documentos.length}</span>
+        </button>
+        <button type="button" class="tab-btn ${state.activeTab === 'tab-auditoria' ? 'active' : ''}" data-tab="tab-auditoria">
+          🛡️ Auditoria Pré-PVA ${aud.aprovado_para_pva ? '<span class="tab-badge-ok">✓ 100%</span>' : `<span class="tab-badge-err">${aud.erros_impeditivos}</span>`}
+        </button>
+        <button type="button" class="tab-btn ${state.activeTab === 'tab-sped' ? 'active' : ''}" data-tab="tab-sped">
+          🏛️ Exportador SPED
+        </button>
+        <button type="button" class="tab-btn ${state.activeTab === 'tab-depara' ? 'active' : ''}" data-tab="tab-depara">
+          ⚙️ Regras De-Para
+        </button>
+      </nav>
+
+      <!-- Conteúdo da Aba 1: Dashboard & Apuração -->
+      <div class="tab-content-area ${state.activeTab === 'tab-dashboard' ? 'show' : ''}" id="tab-dashboard">
+        ${renderTabDashboard(emp, ap, aud)}
+      </div>
+
+      <!-- Conteúdo da Aba 2: Ingestão de Documentos (Alimentar o Sistema) -->
+      <div class="tab-content-area ${state.activeTab === 'tab-documentos' ? 'show' : ''}" id="tab-documentos">
+        ${renderTabDocumentos(emp)}
+      </div>
+
+      <!-- Conteúdo da Aba 3: Auditoria Pré-PVA -->
+      <div class="tab-content-area ${state.activeTab === 'tab-auditoria' ? 'show' : ''}" id="tab-auditoria">
+        ${renderTabAuditoria(aud)}
+      </div>
+
+      <!-- Conteúdo da Aba 4: Exportação SPED -->
+      <div class="tab-content-area ${state.activeTab === 'tab-sped' ? 'show' : ''}" id="tab-sped">
+        ${renderTabSped(emp, ap)}
+      </div>
+
+      <!-- Conteúdo da Aba 5: Regras De-Para -->
+      <div class="tab-content-area ${state.activeTab === 'tab-depara' ? 'show' : ''}" id="tab-depara">
+        ${renderTabDePara()}
+      </div>
+
+      <!-- Modal: Novo Lançamento Manual de Documento -->
+      <div class="fiscal-modal-backdrop" id="modalNovoDocumento" style="display:none;">
+        <div class="fiscal-modal-box">
+          <div class="modal-box-header">
+            <h3>📝 Novo Lançamento Manual de Nota Fiscal</h3>
+            <button type="button" class="btn-close-box" id="btnCloseNovoDocModal">✕</button>
           </div>
-        </div>
-        <div class="sped-export-actions">
-          <button type="button" class="btn-sped-export" id="btnExportarEfdIcms">
-            📥 Baixar EFD ICMS IPI (.txt)
-          </button>
-          <button type="button" class="btn-sped-export outline" id="btnExportarEfdContr">
-            📥 Baixar EFD-Contribuições (.txt)
-          </button>
-          <button type="button" class="btn-sped-export viewer" id="btnVisualizarSped">
-            👁️ Visualizar Linhas SPED
-          </button>
-        </div>
-      </section>
-
-      <!-- Painel de Auditoria Pré-PVA (Accordion ou Lista) -->
-      <section class="audit-details-panel" id="auditDetailsSection" style="${aud.inconsistencias.length > 0 ? 'display:block;' : 'display:none;'}">
-        <div class="panel-header">
-          <h3>🛡️ Relatório de Auditoria Fiscal (10 Regras Pré-PVA)</h3>
-          <span class="badge-audit-count ${aud.aprovado_para_pva ? 'success' : 'danger'}">
-            ${aud.erros_impeditivos} Erros Impeditivos | ${aud.alertas} Alertas
-          </span>
-        </div>
-
-        <div class="audit-rules-checklist">
-          ${renderChecklistRegras(aud)}
-        </div>
-
-        ${aud.inconsistencias.length > 0 ? `
-          <div class="inconsistencies-list">
-            <h4>Inconsistências Identificadas para Correção:</h4>
-            ${aud.inconsistencias.map(inc => `
-              <div class="inc-card ${inc.tipo.toLowerCase()}">
-                <div class="inc-badge">${inc.tipo}</div>
-                <div class="inc-content">
-                  <div class="inc-title"><strong>[${inc.codigo}]</strong> ${inc.documento || ''}</div>
-                  <div class="inc-msg">${inc.mensagem}</div>
-                  ${inc.chave_acesso ? `<div class="inc-chave">Chave: <code>${inc.chave_acesso}</code></div>` : ''}
-                </div>
+          <form id="formNovoDocumento" class="modal-box-body">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>Tipo de Operação</label>
+                <select id="docNewTipo" class="form-input" required>
+                  <option value="ENTRADA">⬇️ Entrada (Compra / Fornecedor)</option>
+                  <option value="SAIDA">⬆️ Saída (Venda / Cliente)</option>
+                </select>
               </div>
-            `).join('')}
-          </div>
-        ` : ''}
-      </section>
+              <div class="form-group">
+                <label>Destinação do Item</label>
+                <select id="docNewDestinacao" class="form-input">
+                  <option value="REVENDA">Revenda de Mercadorias (com crédito)</option>
+                  <option value="INSUMO">Insumo / Matéria-Prima (com crédito)</option>
+                  <option value="USO_CONSUMO">Material de Uso e Consumo (sem crédito)</option>
+                  <option value="ATIVO_IMOBILIZADO">Ativo Imobilizado (CIAP - Bloco G)</option>
+                </select>
+              </div>
+            </div>
 
-      <!-- Tabela de Documentos Fiscais Escriturados -->
-      <section class="fiscal-documents-table-card">
-        <div class="table-card-header">
-          <div>
-            <h3>Livro Registro de Documentos Fiscais (${state.documentos.length} Documentos)</h3>
-            <p>Notas Fiscais de Entrada e Saída escrituradas com De-Para de CFOP e CST aplicados.</p>
-          </div>
-          <div class="table-actions">
-            <button type="button" class="btn-secondary" id="btnInjetarDivergenciaTeste">
-              ⚡ Simular Inconsistência no Lote
-            </button>
-            <button type="button" class="btn-secondary" id="btnRestaurarLoteLimpo">
-              ✨ Restaurar Lote Válido
-            </button>
-          </div>
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label>Número da NF</label>
+                <input type="number" id="docNewNumero" class="form-input" placeholder="Ex: 10450" required />
+              </div>
+              <div class="form-group">
+                <label>Série</label>
+                <input type="text" id="docNewSerie" class="form-input" value="1" required />
+              </div>
+              <div class="form-group">
+                <label>Data de Emissão</label>
+                <input type="date" id="docNewData" class="form-input" value="${state.anoMes}-15" required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Nome do Participante (Cliente ou Fornecedor)</label>
+              <input type="text" id="docNewPartNome" class="form-input" placeholder="Razão Social / Nome Fantasia" required />
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>CNPJ / CPF do Participante</label>
+                <input type="text" id="docNewPartDoc" class="form-input" placeholder="Apenas números" required />
+              </div>
+              <div class="form-group">
+                <label>UF do Participante</label>
+                <select id="docNewPartUf" class="form-input">
+                  <option value="SP" selected>SP - São Paulo</option>
+                  <option value="RJ">RJ - Rio de Janeiro</option>
+                  <option value="MG">MG - Minas Gerais</option>
+                  <option value="PR">PR - Paraná</option>
+                  <option value="RS">RS - Rio Grande do Sul</option>
+                  <option value="SC">SC - Santa Catarina</option>
+                  <option value="BA">BA - Bahia</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label>Valor Total dos Produtos (R$)</label>
+                <input type="number" step="0.01" id="docNewValorTotal" class="form-input" placeholder="0.00" required />
+              </div>
+              <div class="form-group">
+                <label>CFOP</label>
+                <input type="text" id="docNewCfop" class="form-input" placeholder="Ex: 5102 ou 1102" required />
+              </div>
+              <div class="form-group">
+                <label>Alíquota ICMS (%)</label>
+                <input type="number" step="0.01" id="docNewAliqIcms" class="form-input" value="18.00" />
+              </div>
+            </div>
+
+            <div class="modal-box-footer">
+              <button type="button" class="btn-secondary" id="btnCancelNovoDoc">Cancelar</button>
+              <button type="submit" class="btn-primary">Salvar e Escriturar</button>
+            </div>
+          </form>
         </div>
+      </div>
 
-        <div class="table-responsive">
-          <table class="fiscal-table">
-            <thead>
-              <tr>
-                <th>Operação</th>
-                <th>Modelo / Número</th>
-                <th>Data Emissão</th>
-                <th>Participante</th>
-                <th>Valor Total</th>
-                <th>CFOP Escriturado</th>
-                <th>CST ICMS</th>
-                <th>ICMS Próprio</th>
-                <th>CST PIS/COF</th>
-                <th>PIS</th>
-                <th>COFINS</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${state.documentos.map(doc => {
-                const item1 = doc.itens?.[0] || {};
-                const isSaida = doc.tipo_operacao === 'SAIDA';
-                return `
-                  <tr>
-                    <td>
-                      <span class="badge-operacao ${isSaida ? 'saida' : 'entrada'}">
-                        ${isSaida ? '⬆️ SAÍDA' : '⬇️ ENTRADA'}
-                      </span>
-                    </td>
-                    <td>
-                      <strong>${doc.modelo || '55'}-${doc.numero}</strong><br>
-                      <small style="color:var(--text-dim)">Série ${doc.serie}</small>
-                    </td>
-                    <td>${formatDateBr(doc.data_emissao)}</td>
-                    <td>
-                      <strong>${doc.participante_nome || doc.destinatario?.razao_social || doc.emitente?.razao_social || 'Cliente / Fornecedor'}</strong><br>
-                      <small style="color:var(--text-dim)">Cod: ${doc.participante_codigo || 'PART'}</small>
-                    </td>
-                    <td><strong>R$ ${formatBrl(doc.valor_total_documento)}</strong></td>
-                    <td><span class="cfop-pill">${item1.cfop_escriturado || item1.cfop_origem || '-'}</span></td>
-                    <td><span class="cst-pill">${item1.cst_icms || '00'}</span></td>
-                    <td>R$ ${formatBrl(item1.valor_icms || doc.totais?.valor_icms || 0)}</td>
-                    <td><span class="cst-pill">${item1.cst_pis || '01'}</span></td>
-                    <td>R$ ${formatBrl(item1.valor_pis || doc.totais?.valor_pis || 0)}</td>
-                    <td>R$ ${formatBrl(item1.valor_cofins || doc.totais?.valor_cofins || 0)}</td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Modal de Visualização SPED -->
-      <div class="modal-sped-backdrop" id="modalSpedViewer" style="display:none;">
-        <div class="modal-sped-dialog">
-          <div class="modal-sped-header">
-            <h3>📄 Arquivo SPED EFD ICMS IPI Gerado (Visualização Oficial)</h3>
-            <button type="button" class="btn-close-modal" id="btnCloseSpedModal">✕</button>
+      <!-- Modal: Cadastrar Nova Empresa / Cliente -->
+      <div class="fiscal-modal-backdrop" id="modalNovaEmpresa" style="display:none;">
+        <div class="fiscal-modal-box">
+          <div class="modal-box-header">
+            <h3>🏢 Cadastrar Novo Cliente do Escritório</h3>
+            <button type="button" class="btn-close-box" id="btnCloseNovaEmpresaModal">✕</button>
           </div>
-          <div class="modal-sped-body">
-            <pre class="sped-code-block" id="spedCodeContainer"></pre>
-          </div>
-          <div class="modal-sped-footer">
-            <button type="button" class="btn-primary" id="btnCopiarLinhasSped">📋 Copiar Linhas</button>
-            <button type="button" class="btn-secondary" id="btnDownloadSpedModal">💾 Salvar Arquivo .txt</button>
-          </div>
+          <form id="formNovaEmpresa" class="modal-box-body">
+            <div class="form-group">
+              <label>Razão Social</label>
+              <input type="text" id="empNewRazao" class="form-input" placeholder="Ex: Empresa Modelo Distribuidora Ltda" required />
+            </div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>Nome Fantasia</label>
+                <input type="text" id="empNewFantasia" class="form-input" placeholder="Ex: Distribuidora Modelo" />
+              </div>
+              <div class="form-group">
+                <label>CNPJ</label>
+                <input type="text" id="empNewCnpj" class="form-input" placeholder="14 dígitos" required />
+              </div>
+            </div>
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label>Inscrição Estadual</label>
+                <input type="text" id="empNewIE" class="form-input" placeholder="Somente números" required />
+              </div>
+              <div class="form-group">
+                <label>UF</label>
+                <select id="empNewUf" class="form-input">
+                  <option value="SP" selected>SP</option>
+                  <option value="RJ">RJ</option>
+                  <option value="MG">MG</option>
+                  <option value="PR">PR</option>
+                  <option value="SC">SC</option>
+                  <option value="RS">RS</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Regime Tributário</label>
+                <select id="empNewRegime" class="form-input">
+                  <option value="LUCRO_REAL">Lucro Real (Não-Cumulativo)</option>
+                  <option value="LUCRO_PRESUMIDO">Lucro Presumido (Cumulativo)</option>
+                  <option value="SIMPLES_NACIONAL">Simples Nacional</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-box-footer">
+              <button type="button" class="btn-secondary" id="btnCancelNovaEmp">Cancelar</button>
+              <button type="submit" class="btn-primary">Criar Empresa</button>
+            </div>
+          </form>
         </div>
       </div>
     `;
 
-    bindEscrituracaoEvents();
+    bindTabEvents();
+    bindActionEvents();
   }
 
-  function renderChecklistRegras(aud) {
+  // 3. Renderizadores de Cada Aba
+
+  function renderTabDashboard(emp, ap, aud) {
+    return `
+      <!-- Cartões Principais de Apuração -->
+      <div class="dashboard-cards-grid">
+        <!-- Card ICMS -->
+        <div class="dash-card icms-card">
+          <div class="dash-card-header">
+            <span class="tax-badge icms">ICMS Próprio</span>
+            <span class="reg-indicator">Registro E110</span>
+          </div>
+          <div class="dash-card-main-val">R$ ${formatBrl(ap.icms.imposto_a_recolher)}</div>
+          <span class="dash-card-sublabel">${ap.icms.saldo_credor_transportar > 0 ? 'Saldo Credor a Transportar' : 'Imposto Líquido a Recolher'}</span>
+          
+          <div class="tax-breakdown-bar">
+            <div class="bar-item debit" style="width: 60%;" title="Débitos pelas Saídas"></div>
+            <div class="bar-item credit" style="width: 40%;" title="Créditos pelas Entradas"></div>
+          </div>
+
+          <div class="tax-details-row">
+            <div><span>Débitos (Saídas):</span><strong>R$ ${formatBrl(ap.icms.total_debitos)}</strong></div>
+            <div><span>Créditos (Entradas):</span><strong>R$ ${formatBrl(ap.icms.total_creditos)}</strong></div>
+          </div>
+          ${ap.icms.saldo_credor_transportar > 0 ? `
+            <div class="highlight-credit-pill">💰 Saldo Credor Mês Seguinte: R$ ${formatBrl(ap.icms.saldo_credor_transportar)}</div>
+          ` : ''}
+        </div>
+
+        <!-- Card PIS -->
+        <div class="dash-card pis-card">
+          <div class="dash-card-header">
+            <span class="tax-badge pis">PIS / PASEP</span>
+            <span class="reg-indicator">Registro M200</span>
+          </div>
+          <div class="dash-card-main-val">R$ ${formatBrl(ap.pis.imposto_a_recolher)}</div>
+          <span class="dash-card-sublabel">Alíquota: ${ap.pis.aliquota_aplicada}% (${ap.pis.regime})</span>
+          
+          <div class="tax-details-row">
+            <div><span>Débitos:</span><strong>R$ ${formatBrl(ap.pis.total_debitos)}</strong></div>
+            <div><span>Créditos Insumos:</span><strong>R$ ${formatBrl(ap.pis.total_creditos)}</strong></div>
+          </div>
+
+          ${ap.pis.total_icms_excluido_tema69 > 0 ? `
+            <div class="highlight-tema69-pill">
+              ⚖️ <strong>Tema 69 STF:</strong> -R$ ${formatBrl(ap.pis.total_icms_excluido_tema69)} ICMS abatido da base
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Card COFINS -->
+        <div class="dash-card cofins-card">
+          <div class="dash-card-header">
+            <span class="tax-badge cofins">COFINS</span>
+            <span class="reg-indicator">Registro M600</span>
+          </div>
+          <div class="dash-card-main-val">R$ ${formatBrl(ap.cofins.imposto_a_recolher)}</div>
+          <span class="dash-card-sublabel">Alíquota: ${ap.cofins.aliquota_aplicada}% (${ap.pis.regime})</span>
+
+          <div class="tax-details-row">
+            <div><span>Débitos:</span><strong>R$ ${formatBrl(ap.cofins.total_debitos)}</strong></div>
+            <div><span>Créditos Insumos:</span><strong>R$ ${formatBrl(ap.cofins.total_creditos)}</strong></div>
+          </div>
+        </div>
+
+        <!-- Card Auditoria Rápida -->
+        <div class="dash-card audit-summary-card ${aud.aprovado_para_pva ? 'audit-pass' : 'audit-warn'}">
+          <div class="dash-card-header">
+            <span class="tax-badge audit">Auditoria PVA</span>
+            <span class="reg-indicator">Guia EFD v3.1.6</span>
+          </div>
+          <div class="audit-score-gauge">
+            <div class="score-circle ${aud.aprovado_para_pva ? 'perfect' : 'warning'}">
+              ${aud.aprovado_para_pva ? '100%' : '80%'}
+            </div>
+            <div class="score-text">
+              <h4>${aud.aprovado_para_pva ? 'Pronto para o PVA' : 'Requer Atenção'}</h4>
+              <p>${aud.erros_impeditivos} erros impeditivos encontrados</p>
+            </div>
+          </div>
+          <button type="button" class="btn-dash-action" id="btnGoAuditTab">
+            Inspecionar 10 Regras →
+          </button>
+        </div>
+      </div>
+
+      <!-- Resumo Rápido da Movimentação -->
+      <div class="dashboard-secondary-grid">
+        <div class="summary-box">
+          <h4>📌 Resumo Executivo da Escrituração</h4>
+          <div class="summary-list">
+            <div class="summary-item">
+              <span>Notas de Saída Faturadas:</span>
+              <strong>${state.documentos.filter(d => d.tipo_operacao === 'SAIDA').length} notas (R$ ${formatBrl(state.documentos.filter(d => d.tipo_operacao === 'SAIDA').reduce((s, d) => s + d.valor_total_documento, 0))})</strong>
+            </div>
+            <div class="summary-item">
+              <span>Notas de Entrada Escrituradas:</span>
+              <strong>${state.documentos.filter(d => d.tipo_operacao === 'ENTRADA').length} notas (R$ ${formatBrl(state.documentos.filter(d => d.tipo_operacao === 'ENTRADA').reduce((s, d) => s + d.valor_total_documento, 0))})</strong>
+            </div>
+            <div class="summary-item">
+              <span>Créditos Tributários Apropriados:</span>
+              <strong style="color:var(--accent-emerald)">R$ ${formatBrl(ap.icms.total_creditos)} de ICMS + R$ ${formatBrl(ap.pis.total_creditos + ap.cofins.total_creditos)} de PIS/COFINS</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="quick-feed-box">
+          <h4>🚀 Como Alimentar Novos Dados?</h4>
+          <p>Você pode alimentar o sistema de 3 formas:</p>
+          <div class="feed-options-row">
+            <button type="button" class="feed-btn" id="btnFeedXml">
+              📂 Arrastar e Soltar XMLs
+            </button>
+            <button type="button" class="feed-btn secondary" id="btnFeedManual">
+              ➕ Lançar Nota Avulsa
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderTabDocumentos(emp) {
+    const docsFiltrados = state.documentos.filter(d => {
+      if (state.filtroOperacao !== 'TODOS' && d.tipo_operacao !== state.filtroOperacao) return false;
+      if (state.termoBusca) {
+        const termo = state.termoBusca.toLowerCase();
+        const numStr = String(d.numero);
+        const partStr = (d.participante_nome || '').toLowerCase();
+        const chvStr = (d.chave_acesso || '').toLowerCase();
+        return numStr.includes(termo) || partStr.includes(termo) || chvStr.includes(termo);
+      }
+      return true;
+    });
+
+    return `
+      <!-- Zona de Ingestão de XMLs em Lote -->
+      <section class="ingestion-dropzone-card" id="fiscalDropZoneCard">
+        <input type="file" id="fiscalBatchFileInput" multiple accept=".xml" style="display:none;" />
+        <div class="dropzone-content">
+          <div class="drop-icon">📥</div>
+          <div class="drop-text">
+            <h3>Solte aqui seus XMLs de Notas Fiscais (NF-e, CT-e, NFS-e)</h3>
+            <p>Selecione um ou múltiplos arquivos para importar instantaneamente com resolução De-Para automática.</p>
+          </div>
+          <div class="dropzone-options">
+            <label>Destinação Padrão:</label>
+            <select id="selectDestinacaoBatch" class="form-select-sm">
+              <option value="REVENDA">Revenda de Mercadorias</option>
+              <option value="INSUMO">Insumos Industriais</option>
+              <option value="USO_CONSUMO">Uso e Consumo</option>
+              <option value="ATIVO_IMOBILIZADO">Ativo Imobilizado</option>
+            </select>
+            <button type="button" class="btn-primary" id="btnBrowseXmlBatch">
+              Selecionar XMLs do PC
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Barra de Controle da Tabela de Documentos -->
+      <div class="docs-table-toolbar">
+        <div class="toolbar-left">
+          <div class="filter-pills-group">
+            <button type="button" class="filter-pill ${state.filtroOperacao === 'TODOS' ? 'active' : ''}" data-filter="TODOS">
+              Todos (${state.documentos.length})
+            </button>
+            <button type="button" class="filter-pill ${state.filtroOperacao === 'SAIDA' ? 'active' : ''}" data-filter="SAIDA">
+              Saídas / Vendas (${state.documentos.filter(d => d.tipo_operacao === 'SAIDA').length})
+            </button>
+            <button type="button" class="filter-pill ${state.filtroOperacao === 'ENTRADA' ? 'active' : ''}" data-filter="ENTRADA">
+              Entradas / Compras (${state.documentos.filter(d => d.tipo_operacao === 'ENTRADA').length})
+            </button>
+          </div>
+
+          <div class="search-input-box">
+            <input type="text" id="inputBuscaDoc" placeholder="Buscar por número, participante ou chave..." value="${state.termoBusca}" />
+          </div>
+        </div>
+
+        <div class="toolbar-right">
+          <button type="button" class="btn-primary" id="btnOpenNovoDocModal">
+            ➕ Novo Lançamento Manual
+          </button>
+          <button type="button" class="btn-secondary" id="btnLimparDocumentos" title="Limpar documentos desta empresa">
+            🗑️ Limpar Lote
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabela Reativa de Documentos -->
+      <div class="fiscal-table-container">
+        <table class="fiscal-modern-table">
+          <thead>
+            <tr>
+              <th>Operação</th>
+              <th>Documento</th>
+              <th>Emissão</th>
+              <th>Participante</th>
+              <th>Valor Total</th>
+              <th>CFOP Escrit.</th>
+              <th>CST ICMS</th>
+              <th>ICMS Próprio</th>
+              <th>PIS / COFINS</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${docsFiltrados.length === 0 ? `
+              <tr>
+                <td colspan="10" class="empty-table-cell">
+                  Nenhum documento fiscal encontrado com os filtros selecionados.
+                  Arraste arquivos XML acima ou faça um lançamento manual.
+                </td>
+              </tr>
+            ` : docsFiltrados.map(d => {
+              const item1 = d.itens?.[0] || {};
+              const isSaida = d.tipo_operacao === 'SAIDA';
+              return `
+                <tr>
+                  <td>
+                    <span class="badge-op-tag ${isSaida ? 'saida' : 'entrada'}">
+                      ${isSaida ? '⬆️ SAÍDA' : '⬇️ ENTRADA'}
+                    </span>
+                  </td>
+                  <td>
+                    <strong>NF-e ${d.numero}</strong><br>
+                    <small style="color:var(--text-dim)">Série ${d.serie} • Mod ${d.modelo || '55'}</small>
+                  </td>
+                  <td>${formatDateBr(d.data_emissao)}</td>
+                  <td>
+                    <span class="part-name-cell" title="${d.participante_nome}">${d.participante_nome || 'Cliente / Fornecedor'}</span><br>
+                    <small style="color:var(--text-dim)">Cód: ${d.participante_codigo || '0150'}</small>
+                  </td>
+                  <td><strong>R$ ${formatBrl(d.valor_total_documento)}</strong></td>
+                  <td><span class="pill-code cfop">${item1.cfop_escriturado || item1.cfop_origem || '-'}</span></td>
+                  <td><span class="pill-code cst">${item1.cst_icms || '00'}</span></td>
+                  <td>R$ ${formatBrl(item1.valor_icms || d.totais?.valor_icms || 0)}</td>
+                  <td>
+                    <small>PIS: R$ ${formatBrl(item1.valor_pis || d.totais?.valor_pis || 0)}</small><br>
+                    <small>COF: R$ ${formatBrl(item1.valor_cofins || d.totais?.valor_cofins || 0)}</small>
+                  </td>
+                  <td>
+                    <button type="button" class="btn-table-del" data-delete-id="${d.id}" title="Excluir Documento">✕</button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderTabAuditoria(aud) {
     const regrasDef = [
-      { id: 'VAL_C100_VS_C170_TOTAL', nome: '1. Total C100 vs. Soma dos Itens C170' },
-      { id: 'VAL_C100_VS_C190_ICMS', nome: '2. Amarração C170 vs. Analítico C190' },
-      { id: 'VAL_CHAVE_ACESSO_DV', nome: '3. Dígito Verificador Módulo 11 (Chave)' },
-      { id: 'VAL_CFOP_TERRITORIALIDADE', nome: '4. CFOP vs. Territorialidade (UF Origem/Dest)' },
-      { id: 'VAL_CST_ALIQ_CALC_ICMS', nome: '5. Cálculo Matemático de ICMS (CST x Base x Aliq)' },
-      { id: 'VAL_CST_PIS_REGIME_COERENCIA', nome: '6. CST PIS/COFINS vs. Regime Tributário' },
-      { id: 'VAL_PARTICIPANTE_ORFAO', nome: '7. Participante Cadastrado no Bloco 0150' },
-      { id: 'VAL_ITEM_ORFAO_NCM_VALIDO', nome: '8. Item Cadastrado no 0200 com NCM TIPI Válido' },
-      { id: 'VAL_E110_VS_DOCS_CONCILIACAO', nome: '9. Conciliação da Apuração E110 com Documentos' },
-      { id: 'VAL_TESE_SECULO_ICMS_BASE_PIS', nome: '10. Tese do Século (Exclusão ICMS da Base PIS/COFINS)' }
+      { id: 'VAL_C100_VS_C170_TOTAL', nome: '1. Total C100 vs. Soma dos Itens C170', desc: 'Conferência de soma de produtos, frete, seguro, IPI e descontos.' },
+      { id: 'VAL_C100_VS_C190_ICMS', nome: '2. Amarração C170 vs. Analítico C190', desc: 'Consistência de CST, CFOP e alíquotas agrupadas.' },
+      { id: 'VAL_CHAVE_ACESSO_DV', nome: '3. Dígito Verificador da Chave de Acesso', desc: 'Cálculo e conferência algorítmica do Módulo 11 da SEFAZ.' },
+      { id: 'VAL_CFOP_TERRITORIALIDADE', nome: '4. Territorialidade de CFOP vs. UFs', desc: 'Cruzamento de UF de emitente e destinatário (interna vs interestadual).' },
+      { id: 'VAL_CST_ALIQ_CALC_ICMS', nome: '5. Cálculo de ICMS (Base x Alíquota)', desc: 'Validação de precisão decimal e bloqueio de base em CSTs isentos.' },
+      { id: 'VAL_CST_PIS_REGIME_COERENCIA', nome: '6. CST PIS/COFINS vs. Regime Tributário', desc: 'Bloqueio de CSTs de crédito 50-66 no Lucro Presumido (Lei 9.718).' },
+      { id: 'VAL_PARTICIPANTE_ORFAO', nome: '7. Participantes Cadastrados (Bloco 0150)', desc: 'Garante que todo cliente/fornecedor exista no cadastro de entidades.' },
+      { id: 'VAL_ITEM_ORFAO_NCM_VALIDO', nome: '8. Validade de NCM e Item (Bloco 0200)', desc: 'Conferência de 8 dígitos numéricos válidos da TIPI.' },
+      { id: 'VAL_E110_VS_DOCS_CONCILIACAO', nome: '9. Conciliação E110 vs. Documentos', desc: 'Conferência entre o livro de fechamento e as notas fiscais do mês.' },
+      { id: 'VAL_TESE_SECULO_ICMS_BASE_PIS', nome: '10. Tese do Século (Tema 69 STF)', desc: 'Alerta sobre oportunidade de exclusão do ICMS na base de PIS/COFINS.' }
     ];
 
-    return regrasDef.map(r => {
-      const falhou = aud.inconsistencias.some(inc => inc.codigo === r.id);
-      return `
-        <div class="rule-checklist-item ${falhou ? 'fail' : 'pass'}">
-          <span class="rule-icon">${falhou ? '❌' : '✅'}</span>
-          <span class="rule-name">${r.nome}</span>
-          <span class="rule-badge">${falhou ? 'Inconsistência' : 'Conforme'}</span>
+    return `
+      <div class="audit-workspace-view">
+        <div class="audit-banner-hero ${aud.aprovado_para_pva ? 'hero-pass' : 'hero-warn'}">
+          <div class="hero-status-badge">${aud.aprovado_para_pva ? '✅ CONFORME' : '⚠️ ATENÇÃO'}</div>
+          <h2>${aud.aprovado_para_pva ? 'Lote Aprovado com Sucesso para Importação no PVA' : 'Identificadas Inconsistências que Impedem a Transmissão'}</h2>
+          <p>${aud.aprovado_para_pva ? 'Todos os registros fiscais atendem integralmente aos requisitos do Guia Prático da EFD.' : 'Corrija os pontos listados abaixo para evitar rejeição no PVA da Receita Federal.'}</p>
         </div>
-      `;
-    }).join('');
+
+        <div class="audit-checklist-grid">
+          ${regrasDef.map(r => {
+            const falhou = aud.inconsistencias.some(inc => inc.codigo === r.id);
+            return `
+              <div class="audit-rule-card ${falhou ? 'fail' : 'pass'}">
+                <div class="rule-card-top">
+                  <span class="rule-icon-box">${falhou ? '❌' : '✓'}</span>
+                  <div class="rule-titles">
+                    <h4>${r.nome}</h4>
+                    <p>${r.desc}</p>
+                  </div>
+                </div>
+                <div class="rule-card-status">
+                  ${falhou ? '<span class="status-pill err">Inconsistente</span>' : '<span class="status-pill ok">Validado</span>'}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        ${aud.inconsistencias.length > 0 ? `
+          <div class="audit-issues-panel">
+            <h3>Detalhes das Divergências Encontradas (${aud.inconsistencias.length})</h3>
+            <div class="issues-list">
+              ${aud.inconsistencias.map(inc => `
+                <div class="issue-item-row ${inc.tipo.toLowerCase()}">
+                  <div class="issue-type-badge">${inc.tipo}</div>
+                  <div class="issue-text-col">
+                    <strong>[${inc.codigo}] ${inc.documento || ''}</strong>
+                    <p>${inc.mensagem}</p>
+                    ${inc.chave_acesso ? `<code>Chave: ${inc.chave_acesso}</code>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
   }
 
-  function bindEscrituracaoEvents() {
-    // Seletor de empresa
+  function renderTabSped(emp, ap) {
+    return `
+      <div class="sped-workspace-view">
+        <div class="sped-cards-row">
+          <div class="sped-type-box">
+            <div class="sped-type-header">
+              <span class="sped-badge">EFD ICMS IPI</span>
+              <h4>SPED Fiscal Geral</h4>
+            </div>
+            <p>Escrituração de mercadorias, apuração de ICMS e IPI (Blocos 0, C, D, E e 9).</p>
+            <div class="sped-btn-row">
+              <button type="button" class="btn-primary" id="btnDownloadEfdIcmsTab">
+                📥 Baixar Arquivo .txt
+              </button>
+              <button type="button" class="btn-secondary" id="btnViewEfdIcmsTab">
+                👁️ Ver Linhas
+              </button>
+            </div>
+          </div>
+
+          <div class="sped-type-box">
+            <div class="sped-type-header">
+              <span class="sped-badge contr">EFD-Contribuições</span>
+              <h4>PIS / COFINS</h4>
+            </div>
+            <p>Escrituração das contribuições não-cumulativas e cumulativas (Blocos 0, A, C, M e 9).</p>
+            <div class="sped-btn-row">
+              <button type="button" class="btn-primary" id="btnDownloadEfdContrTab">
+                📥 Baixar Arquivo .txt
+              </button>
+              <button type="button" class="btn-secondary" id="btnViewEfdContrTab">
+                👁️ Ver Linhas
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visualizador de Código SPED Embutido -->
+        <div class="sped-embedded-viewer-box" id="spedEmbeddedBox" style="display:none;">
+          <div class="viewer-top-bar">
+            <h4 id="spedViewerTitle">📄 Prévia do Arquivo SPED</h4>
+            <div class="viewer-actions">
+              <button type="button" class="btn-sm" id="btnCopySpedCode">📋 Copiar Linhas</button>
+              <button type="button" class="btn-sm secondary" id="btnCloseSpedViewer">✕ Fechar</button>
+            </div>
+          </div>
+          <pre class="sped-code-block" id="spedEmbeddedCode"></pre>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderTabDePara() {
+    return `
+      <div class="depara-workspace-view">
+        <div class="depara-hero-card">
+          <div>
+            <h3>⚙️ Regras Fiscais de Conversão "De-Para"</h3>
+            <p>Configure a amarração de CFOPs e CSTs do fornecedor para a escrituração do seu cliente.</p>
+          </div>
+        </div>
+
+        <div class="depara-table-box">
+          <table class="fiscal-modern-table">
+            <thead>
+              <tr>
+                <th>CFOP Fornecedor (Saída)</th>
+                <th>Destinação do Cliente</th>
+                <th>CFOP Escriturado (Entrada)</th>
+                <th>CST ICMS</th>
+                <th>CST PIS/COF</th>
+                <th>Apropria Crédito?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>5.102 / 6.102</code> (Venda mercadoria)</td>
+                <td><span class="dest-badge revenda">REVENDA</span></td>
+                <td><code>1.102 / 2.102</code></td>
+                <td>00</td>
+                <td>50</td>
+                <td><span class="status-pill ok">Sim (ICMS e PIS/COFINS)</span></td>
+              </tr>
+              <tr>
+                <td><code>5.101 / 6.101</code> (Venda produção)</td>
+                <td><span class="dest-badge insumo">INSUMO</span></td>
+                <td><code>1.101 / 2.101</code></td>
+                <td>00</td>
+                <td>50</td>
+                <td><span class="status-pill ok">Sim (ICMS e PIS/COFINS)</span></td>
+              </tr>
+              <tr>
+                <td><code>5.405 / 6.403</code> (Venda com ST)</td>
+                <td><span class="dest-badge revenda">REVENDA</span></td>
+                <td><code>1.403 / 2.403</code></td>
+                <td>60</td>
+                <td>70</td>
+                <td><span class="status-pill err">Sem Crédito Próprio</span></td>
+              </tr>
+              <tr>
+                <td><code>5.102 / 6.102</code> (Venda mercadoria)</td>
+                <td><span class="dest-badge consumo">USO_CONSUMO</span></td>
+                <td><code>1.556 / 2.556</code></td>
+                <td>90</td>
+                <td>70</td>
+                <td><span class="status-pill err">Sem Crédito (Vedado)</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  // 4. Tratamento de Eventos e Ações Interativas
+
+  function bindTabEvents() {
+    document.querySelectorAll('.fiscal-tabs-bar .tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabId = btn.getAttribute('data-tab');
+        state.activeTab = tabId;
+        document.querySelectorAll('.fiscal-tabs-bar .tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        document.querySelectorAll('.tab-content-area').forEach(tc => tc.classList.remove('show'));
+        const target = document.getElementById(tabId);
+        if (target) target.classList.add('show');
+      });
+    });
+
+    // Seletor de Empresa
     const selEmp = document.getElementById('selectEmpresaFiscal');
     if (selEmp) {
       selEmp.addEventListener('change', (e) => {
-        const emp = empresasPadrao.find(x => x.id === e.target.value);
-        if (emp) {
-          state.empresaSelecionada = emp;
-          calcularApuracaoLocal();
-          executarAuditoriaLocal();
+        const found = state.empresas.find(x => x.id === e.target.value);
+        if (found) {
+          state.empresaSelecionada = found;
+          saveToLocalStorage();
           renderEscrituracaoModule();
         }
       });
     }
 
-    // Seletor de período
-    const selPer = document.getElementById('selectPeriodoFiscal');
-    if (selPer) {
-      selPer.addEventListener('change', (e) => {
+    // Seletor de Período
+    const inputPer = document.getElementById('inputPeriodoFiscal');
+    if (inputPer) {
+      inputPer.addEventListener('change', (e) => {
         state.anoMes = e.target.value || '2026-01';
-        calcularApuracaoLocal();
-        executarAuditoriaLocal();
+        saveToLocalStorage();
         renderEscrituracaoModule();
       });
     }
 
-    // Botão Recalcular
-    const btnRecalc = document.getElementById('btnRecalcularApuracao');
-    if (btnRecalc) {
-      btnRecalc.addEventListener('click', () => {
-        calcularApuracaoLocal();
-        executarAuditoriaLocal();
+    const btnMesAnt = document.getElementById('btnMesAnterior');
+    if (btnMesAnt) {
+      btnMesAnt.addEventListener('click', () => {
+        state.anoMes = calcularMesRelativo(state.anoMes, -1);
+        saveToLocalStorage();
         renderEscrituracaoModule();
       });
     }
 
-    // Botão Auditar Pré-PVA
-    const btnAud = document.getElementById('btnExecutarAuditoria');
-    if (btnAud) {
-      btnAud.addEventListener('click', () => {
-        executarAuditoriaLocal();
-        const section = document.getElementById('auditDetailsSection');
-        if (section) section.style.display = 'block';
-        section.scrollIntoView({ behavior: 'smooth' });
-      });
-    }
-
-    const btnVerDet = document.getElementById('btnVerDetalhesAuditoria');
-    if (btnVerDet) {
-      btnVerDet.addEventListener('click', () => {
-        const section = document.getElementById('auditDetailsSection');
-        if (section) {
-          section.style.display = 'block';
-          section.scrollIntoView({ behavior: 'smooth' });
-        }
-      });
-    }
-
-    // Botões de Simulação de Inconsistências
-    const btnInjetar = document.getElementById('btnInjetarDivergenciaTeste');
-    if (btnInjetar) {
-      btnInjetar.addEventListener('click', () => {
-        // Provoca 3 inconsistências para demonstração imediata do auditor
-        state.documentos[0].chave_acesso = '35260128192837000109550010000104201000104200'; // DV incorreto
-        state.documentos[0].valor_total_documento = 12490.00; // Total difere dos itens
-        state.documentos[1].itens[0].cst_pis = '50'; // Se for presumido vai apitar
-        calcularApuracaoLocal();
-        executarAuditoriaLocal();
+    const btnMesPost = document.getElementById('btnMesPosterior');
+    if (btnMesPost) {
+      btnMesPost.addEventListener('click', () => {
+        state.anoMes = calcularMesRelativo(state.anoMes, 1);
+        saveToLocalStorage();
         renderEscrituracaoModule();
       });
     }
 
-    const btnRestaurar = document.getElementById('btnRestaurarLoteLimpo');
-    if (btnRestaurar) {
-      btnRestaurar.addEventListener('click', () => {
-        state.documentos = JSON.parse(JSON.stringify(documentosDemonstracao));
-        calcularApuracaoLocal();
-        executarAuditoriaLocal();
-        renderEscrituracaoModule();
+    const btnGoAudit = document.getElementById('btnGoAuditTab');
+    if (btnGoAudit) {
+      btnGoAudit.addEventListener('click', () => {
+        const tabAud = document.querySelector('.tab-btn[data-tab="tab-auditoria"]');
+        if (tabAud) tabAud.click();
       });
     }
 
-    // Exportadores de SPED
-    const btnExpIcms = document.getElementById('btnExportarEfdIcms');
-    if (btnExpIcms) {
-      btnExpIcms.addEventListener('click', () => {
-        const spedTxt = gerarSpedIcmsTxt();
-        downloadTxtFile(spedTxt, `SPED_EFD_ICMS_IPI_${state.empresaSelecionada.cnpj}_${state.anoMes.replace('-', '')}.txt`);
+    const btnFeedXml = document.getElementById('btnFeedXml');
+    if (btnFeedXml) {
+      btnFeedXml.addEventListener('click', () => {
+        const tabDocs = document.querySelector('.tab-btn[data-tab="tab-documentos"]');
+        if (tabDocs) tabDocs.click();
       });
     }
 
-    const btnExpContr = document.getElementById('btnExportarEfdContr');
-    if (btnExpContr) {
-      btnExpContr.addEventListener('click', () => {
-        const spedTxt = gerarSpedContribuicoesTxt();
-        downloadTxtFile(spedTxt, `SPED_EFD_CONTRIBUICOES_${state.empresaSelecionada.cnpj}_${state.anoMes.replace('-', '')}.txt`);
-      });
-    }
-
-    // Modal de Visualização
-    const btnVisSped = document.getElementById('btnVisualizarSped');
-    const modal = document.getElementById('modalSpedViewer');
-    const codeBlock = document.getElementById('spedCodeContainer');
-    const btnCloseModal = document.getElementById('btnCloseSpedModal');
-    const btnCopy = document.getElementById('btnCopiarLinhasSped');
-    const btnDownModal = document.getElementById('btnDownloadSpedModal');
-
-    if (btnVisSped && modal && codeBlock) {
-      btnVisSped.addEventListener('click', () => {
-        const spedTxt = gerarSpedIcmsTxt();
-        codeBlock.textContent = spedTxt;
-        modal.style.display = 'flex';
-      });
-    }
-
-    if (btnCloseModal && modal) {
-      btnCloseModal.addEventListener('click', () => {
-        modal.style.display = 'none';
-      });
-    }
-
-    if (btnCopy && codeBlock) {
-      btnCopy.addEventListener('click', () => {
-        navigator.clipboard.writeText(codeBlock.textContent).then(() => {
-          alert('Linhas do SPED copiadas para a área de transferência!');
-        });
-      });
-    }
-
-    if (btnDownModal && codeBlock) {
-      btnDownModal.addEventListener('click', () => {
-        downloadTxtFile(codeBlock.textContent, `SPED_EFD_ICMS_IPI_${state.empresaSelecionada.cnpj}_${state.anoMes.replace('-', '')}.txt`);
+    const btnFeedManual = document.getElementById('btnFeedManual');
+    if (btnFeedManual) {
+      btnFeedManual.addEventListener('click', () => {
+        const modal = document.getElementById('modalNovoDocumento');
+        if (modal) modal.style.display = 'flex';
       });
     }
   }
 
-  // Motor Local de Apuração
-  function calcularApuracaoLocal() {
+  function bindActionEvents() {
+    // Dropzone de XMLs
+    const dropCard = document.getElementById('fiscalDropZoneCard');
+    const fileInput = document.getElementById('fiscalBatchFileInput');
+    const btnBrowse = document.getElementById('btnBrowseXmlBatch');
+
+    if (btnBrowse && fileInput) {
+      btnBrowse.addEventListener('click', () => fileInput.click());
+    }
+
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        handleXmlFilesList(e.target.files);
+      });
+    }
+
+    if (dropCard) {
+      dropCard.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropCard.classList.add('dragover');
+      });
+      dropCard.addEventListener('dragleave', () => {
+        dropCard.classList.remove('dragover');
+      });
+      dropCard.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropCard.classList.remove('dragover');
+        if (e.dataTransfer && e.dataTransfer.files) {
+          handleXmlFilesList(e.dataTransfer.files);
+        }
+      });
+    }
+
+    // Filtros de Documentos
+    document.querySelectorAll('.filter-pills-group .filter-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.filtroOperacao = btn.getAttribute('data-filter');
+        renderEscrituracaoModule();
+      });
+    });
+
+    const searchInput = document.getElementById('inputBuscaDoc');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        state.termoBusca = e.target.value;
+        renderEscrituracaoModule();
+      });
+    }
+
+    // Modal Novo Documento
+    const btnOpenDoc = document.getElementById('btnOpenNovoDocModal');
+    const modalDoc = document.getElementById('modalNovoDocumento');
+    const btnCloseDoc = document.getElementById('btnCloseNovoDocModal');
+    const btnCancelDoc = document.getElementById('btnCancelNovoDoc');
+    const formNovoDoc = document.getElementById('formNovoDocumento');
+
+    if (btnOpenDoc && modalDoc) {
+      btnOpenDoc.addEventListener('click', () => modalDoc.style.display = 'flex');
+    }
+    if (btnCloseDoc && modalDoc) {
+      btnCloseDoc.addEventListener('click', () => modalDoc.style.display = 'none');
+    }
+    if (btnCancelDoc && modalDoc) {
+      btnCancelDoc.addEventListener('click', () => modalDoc.style.display = 'none');
+    }
+
+    if (formNovoDoc) {
+      formNovoDoc.addEventListener('submit', (e) => {
+        e.preventDefault();
+        criarDocumentoManual();
+      });
+    }
+
+    // Modal Nova Empresa
+    const btnOpenEmp = document.getElementById('btnOpenNovaEmpresaModal');
+    const modalEmp = document.getElementById('modalNovaEmpresa');
+    const btnCloseEmp = document.getElementById('btnCloseNovaEmpresaModal');
+    const btnCancelEmp = document.getElementById('btnCancelNovaEmp');
+    const formNovaEmp = document.getElementById('formNovaEmpresa');
+
+    if (btnOpenEmp && modalEmp) {
+      btnOpenEmp.addEventListener('click', () => modalEmp.style.display = 'flex');
+    }
+    if (btnCloseEmp && modalEmp) {
+      btnCloseEmp.addEventListener('click', () => modalEmp.style.display = 'none');
+    }
+    if (btnCancelEmp && modalEmp) {
+      btnCancelEmp.addEventListener('click', () => modalEmp.style.display = 'none');
+    }
+
+    if (formNovaEmp) {
+      formNovaEmp.addEventListener('submit', (e) => {
+        e.preventDefault();
+        criarEmpresaManual();
+      });
+    }
+
+    // Exclusão de Documento
+    document.querySelectorAll('[data-delete-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-delete-id');
+        if (confirm('Deseja realmente remover esta nota fiscal da escrituração?')) {
+          state.documentos = state.documentos.filter(d => d.id !== id);
+          saveToLocalStorage();
+          renderEscrituracaoModule();
+        }
+      });
+    });
+
+    // Limpar Lote
+    const btnLimpar = document.getElementById('btnLimparDocumentos');
+    if (btnLimpar) {
+      btnLimpar.addEventListener('click', () => {
+        if (confirm('Deseja limpar todos os documentos escriturados no período atual?')) {
+          state.documentos = [];
+          saveToLocalStorage();
+          renderEscrituracaoModule();
+        }
+      });
+    }
+
+    // Botões SPED
+    const btnExpIcms = document.getElementById('btnDownloadEfdIcmsTab');
+    if (btnExpIcms) {
+      btnExpIcms.addEventListener('click', () => {
+        const txt = gerarSpedIcmsTxt();
+        downloadFile(txt, `SPED_EFD_ICMS_IPI_${state.empresaSelecionada.cnpj}_${state.anoMes.replace('-', '')}.txt`);
+      });
+    }
+
+    const btnExpContr = document.getElementById('btnDownloadEfdContrTab');
+    if (btnExpContr) {
+      btnExpContr.addEventListener('click', () => {
+        const txt = gerarSpedContribuicoesTxt();
+        downloadFile(txt, `SPED_EFD_CONTRIBUICOES_${state.empresaSelecionada.cnpj}_${state.anoMes.replace('-', '')}.txt`);
+      });
+    }
+
+    const btnViewIcms = document.getElementById('btnViewEfdIcmsTab');
+    const btnViewContr = document.getElementById('btnViewEfdContrTab');
+    const embedBox = document.getElementById('spedEmbeddedBox');
+    const embedCode = document.getElementById('spedEmbeddedCode');
+    const embedTitle = document.getElementById('spedViewerTitle');
+    const btnCloseSped = document.getElementById('btnCloseSpedViewer');
+    const btnCopySped = document.getElementById('btnCopySpedCode');
+
+    if (btnViewIcms && embedBox && embedCode) {
+      btnViewIcms.addEventListener('click', () => {
+        embedTitle.textContent = '📄 EFD ICMS IPI - Registros Fiscais Formatados';
+        embedCode.textContent = gerarSpedIcmsTxt();
+        embedBox.style.display = 'block';
+        embedBox.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
+    if (btnViewContr && embedBox && embedCode) {
+      btnViewContr.addEventListener('click', () => {
+        embedTitle.textContent = '📄 EFD-Contribuições (PIS/COFINS) - Registros Formatados';
+        embedCode.textContent = gerarSpedContribuicoesTxt();
+        embedBox.style.display = 'block';
+        embedBox.scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
+    if (btnCloseSped && embedBox) {
+      btnCloseSped.addEventListener('click', () => {
+        embedBox.style.display = 'none';
+      });
+    }
+
+    if (btnCopySped && embedCode) {
+      btnCopySped.addEventListener('click', () => {
+        navigator.clipboard.writeText(embedCode.textContent).then(() => {
+          alert('Linhas copiadas para a área de transferência!');
+        });
+      });
+    }
+  }
+
+  // 5. Ingestão de XMLs em Lote
+  async function handleXmlFilesList(files) {
+    if (!files || files.length === 0) return;
+
+    const destinacao = document.getElementById('selectDestinacaoBatch')?.value || 'REVENDA';
+    let importados = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.name.toLowerCase().endsWith('.xml')) continue;
+
+      try {
+        const text = await file.text();
+        const parsed = window.NFeXMLParser ? window.NFeXMLParser.parseXML(text) : null;
+
+        if (parsed) {
+          const emp = state.empresaSelecionada;
+          const cnpjEmpresa = emp.cnpj.replace(/\D/g, '');
+          const cnpjEmitente = (parsed.emitente?.cnpjCpf || '').replace(/\D/g, '');
+          const isSaida = cnpjEmitente === cnpjEmpresa;
+
+          // Conversão de CFOP De-Para
+          const rawCfop = parsed.itens?.[0]?.cfop || '5102';
+          let cfopEscriturado = rawCfop;
+          let creditaIcms = false;
+          let creditaPis = emp.regime_tributario === 'LUCRO_REAL';
+
+          if (!isSaida) {
+            const isInterna = (parsed.emitente?.uf || emp.uf).toUpperCase() === emp.uf.toUpperCase();
+            const prefixo = isInterna ? '1' : '2';
+            if (destinacao === 'REVENDA') {
+              cfopEscriturado = `${prefixo}102`;
+              creditaIcms = emp.regime_tributario !== 'SIMPLES_NACIONAL';
+            } else if (destinacao === 'INSUMO') {
+              cfopEscriturado = `${prefixo}101`;
+              creditaIcms = emp.regime_tributario !== 'SIMPLES_NACIONAL';
+            } else {
+              cfopEscriturado = `${prefixo}556`;
+              creditaIcms = false;
+              creditaPis = false;
+            }
+          }
+
+          const docObj = {
+            id: `xml-${Date.now()}-${i}`,
+            numero: parseInt(parsed.numero || Math.floor(Math.random() * 10000), 10),
+            serie: String(parsed.serie || '1'),
+            modelo: String(parsed.modelo || '55'),
+            chave_acesso: (parsed.chaveAcesso || '').replace(/\D/g, ''),
+            tipo_operacao: isSaida ? 'SAIDA' : 'ENTRADA',
+            tipo_emissao: isSaida ? 'PROPRIA' : 'TERCEIROS',
+            situacao_documento: '00',
+            data_emissao: parsed.dataEmissao ? parsed.dataEmissao.substring(0, 10) : `${state.anoMes}-10`,
+            participante_codigo: `PART_${(parsed.destinatario?.cnpjCpf || parsed.emitente?.cnpjCpf || '000').slice(-6)}`,
+            participante_nome: isSaida ? parsed.destinatario?.razaoSocial : parsed.emitente?.razaoSocial,
+            valor_total_documento: parsed.totais?.vNF || 0,
+            totais: {
+              valor_produtos: parsed.totais?.vProd || 0,
+              valor_desconto: parsed.totais?.vDesc || 0,
+              valor_frete: parsed.totais?.vFrete || 0,
+              valor_seguro: parsed.totais?.vSeg || 0,
+              valor_outras_despesas: parsed.totais?.vOutro || 0,
+              valor_total_documento: parsed.totais?.vNF || 0,
+              valor_bc_icms: parsed.totais?.vBC || 0,
+              valor_icms: parsed.totais?.vICMS || 0,
+              valor_pis: parsed.totais?.vPIS || 0,
+              valor_cofins: parsed.totais?.vCOFINS || 0
+            },
+            itens: (parsed.itens || []).map((it, idx) => ({
+              numero_item: idx + 1,
+              codigo_item: it.cProd || `ITEM_${idx + 1}`,
+              descricao: it.xProd || 'Mercadoria',
+              ncm: (it.ncm || '00000000').replace(/\D/g, '').padEnd(8, '0'),
+              unidade_medida: it.uCom || 'UN',
+              quantidade_comercial: it.qCom || 1,
+              valor_unitario: it.vUnCom || 0,
+              valor_bruto: it.vProd || 0,
+              valor_desconto: it.vDesc || 0,
+              destinacao_item: destinacao,
+              credita_icms: creditaIcms,
+              credita_pis_cofins: creditaPis,
+              cfop_origem: it.cfop || rawCfop,
+              cfop_escriturado: cfopEscriturado,
+              cst_icms: it.icms?.cst || '00',
+              valor_bc_icms: it.icms?.vBC || 0,
+              aliquota_icms: it.icms?.pICMS || 18.00,
+              valor_icms: it.icms?.vICMS || 0,
+              cst_pis: isSaida ? '01' : (creditaPis ? '50' : '70'),
+              valor_bc_pis: it.vProd || 0,
+              aliquota_pis: 1.65,
+              valor_pis: it.pis?.vPIS || 0,
+              cst_cofins: isSaida ? '01' : (creditaPis ? '50' : '70'),
+              valor_bc_cofins: it.vProd || 0,
+              aliquota_cofins: 7.60,
+              valor_cofins: it.cofins?.vCOFINS || 0
+            }))
+          };
+
+          state.documentos.unshift(docObj);
+          importados++;
+        }
+      } catch (err) {
+        console.warn(`Erro no parsing de ${file.name}:`, err);
+      }
+    }
+
+    if (importados > 0) {
+      saveToLocalStorage();
+      renderEscrituracaoModule();
+      alert(`🎉 Sucesso! ${importados} arquivo(s) XML importado(s) e escriturado(s) com De-Para.`);
+    } else {
+      alert('Nenhum XML válido pôde ser importado. Certifique-se de que são arquivos NF-e/CT-e válidos.');
+    }
+  }
+
+  // 6. Lançamento Manual de Documento
+  function criarDocumentoManual() {
+    const tipo = document.getElementById('docNewTipo').value;
+    const destinacao = document.getElementById('docNewDestinacao').value;
+    const numero = parseInt(document.getElementById('docNewNumero').value, 10);
+    const serie = document.getElementById('docNewSerie').value || '1';
+    const dataEmissao = document.getElementById('docNewData').value;
+    const partNome = document.getElementById('docNewPartNome').value;
+    const partDoc = document.getElementById('docNewPartDoc').value.replace(/\D/g, '');
+    const partUf = document.getElementById('docNewPartUf').value;
+    const vTotal = parseFloat(document.getElementById('docNewValorTotal').value) || 0;
+    const cfop = document.getElementById('docNewCfop').value.replace(/\D/g, '');
+    const aliqIcms = parseFloat(document.getElementById('docNewAliqIcms').value) || 18.00;
+
+    const isSaida = tipo === 'SAIDA';
+    const vIcms = Math.round((vTotal * (aliqIcms / 100)) * 100) / 100;
+    const aliqPis = state.empresaSelecionada.regime_tributario === 'LUCRO_REAL' ? 1.65 : 0.65;
+    const aliqCof = state.empresaSelecionada.regime_tributario === 'LUCRO_REAL' ? 7.60 : 3.00;
+    const vPis = Math.round((vTotal * (aliqPis / 100)) * 100) / 100;
+    const vCof = Math.round((vTotal * (aliqCof / 100)) * 100) / 100;
+
+    const creditaIcms = !isSaida && ['REVENDA', 'INSUMO'].includes(destinacao) && state.empresaSelecionada.regime_tributario !== 'SIMPLES_NACIONAL';
+    const creditaPis = !isSaida && ['REVENDA', 'INSUMO'].includes(destinacao) && state.empresaSelecionada.regime_tributario === 'LUCRO_REAL';
+
+    // Gera chave fictícia válida com DV Modulo 11
+    const baseChave = `35${dataEmissao.substring(2, 4)}${dataEmissao.substring(5, 7)}${state.empresaSelecionada.cnpj}55001${String(numero).padStart(9, '0')}100000001`;
+    const chaveValida = gerarChaveComDv(baseChave.substring(0, 43));
+
+    const novoDoc = {
+      id: `manual-${Date.now()}`,
+      numero,
+      serie,
+      modelo: '55',
+      chave_acesso: chaveValida,
+      tipo_operacao: tipo,
+      tipo_emissao: isSaida ? 'PROPRIA' : 'TERCEIROS',
+      situacao_documento: '00',
+      data_emissao: dataEmissao,
+      participante_codigo: `PART_${partDoc.slice(-4) || '99'}`,
+      participante_nome: partNome,
+      valor_total_documento: vTotal,
+      totais: {
+        valor_produtos: vTotal,
+        valor_desconto: 0,
+        valor_total_documento: vTotal,
+        valor_bc_icms: vTotal,
+        valor_icms: vIcms,
+        valor_pis: vPis,
+        valor_cofins: vCof
+      },
+      itens: [
+        {
+          numero_item: 1,
+          codigo_item: 'ITEM_MANUAL',
+          descricao: 'Mercadoria Lançada Manualmente',
+          ncm: '29011000',
+          unidade_medida: 'UN',
+          quantidade_comercial: 1,
+          valor_unitario: vTotal,
+          valor_bruto: vTotal,
+          valor_desconto: 0,
+          destinacao_item: destinacao,
+          credita_icms: creditaIcms,
+          credita_pis_cofins: creditaPis,
+          cfop_origem: cfop,
+          cfop_escriturado: cfop,
+          cst_icms: '00',
+          valor_bc_icms: vTotal,
+          aliquota_icms: aliqIcms,
+          valor_icms: vIcms,
+          cst_pis: isSaida ? '01' : (creditaPis ? '50' : '70'),
+          valor_bc_pis: vTotal,
+          aliquota_pis: aliqPis,
+          valor_pis: vPis,
+          cst_cofins: isSaida ? '01' : (creditaPis ? '50' : '70'),
+          valor_bc_cofins: vTotal,
+          aliquota_cofins: aliqCof,
+          valor_cofins: vCof
+        }
+      ]
+    };
+
+    state.documentos.unshift(novoDoc);
+    saveToLocalStorage();
+
+    const modal = document.getElementById('modalNovoDocumento');
+    if (modal) modal.style.display = 'none';
+
+    renderEscrituracaoModule();
+    alert(`Nota Fiscal ${numero} adicionada e escriturada com sucesso!`);
+  }
+
+  // 7. Cadastro de Nova Empresa
+  function criarEmpresaManual() {
+    const razao = document.getElementById('empNewRazao').value;
+    const fantasia = document.getElementById('empNewFantasia').value || razao;
+    const cnpj = document.getElementById('empNewCnpj').value.replace(/\D/g, '');
+    const ie = document.getElementById('empNewIE').value.replace(/\D/g, '');
+    const uf = document.getElementById('empNewUf').value;
+    const regime = document.getElementById('empNewRegime').value;
+
+    const nova = {
+      id: `emp-${Date.now()}`,
+      tenant_id: state.tenantId,
+      razao_social: razao,
+      nome_fantasia: fantasia,
+      cnpj: cnpj.padEnd(14, '0'),
+      inscricao_estadual: ie,
+      codigo_municipio_ibge: '3550308',
+      uf,
+      regime_tributario: regime,
+      perfil_sped: regime === 'SIMPLES_NACIONAL' ? 'B' : 'A'
+    };
+
+    state.empresas.push(nova);
+    state.empresaSelecionada = nova;
+    saveToLocalStorage();
+
+    const modal = document.getElementById('modalNovaEmpresa');
+    if (modal) modal.style.display = 'none';
+
+    renderEscrituracaoModule();
+    alert(`Empresa "${razao}" cadastrada com sucesso!`);
+  }
+
+  // 8. Motor de Apuração
+  function calcularApuracao() {
     const emp = state.empresaSelecionada;
     const isReal = emp.regime_tributario === 'LUCRO_REAL';
-    const isPresumido = emp.regime_tributario === 'LUCRO_PRESUMIDO';
 
     let debIcms = 0;
     let credIcms = 0;
@@ -759,7 +1546,7 @@
         if (isSaida) {
           debIcms += vIcms;
 
-          // PIS/COFINS com exclusão do ICMS (Tema 69 STF)
+          // Tema 69 STF: Exclusão do ICMS da base de PIS/COFINS
           const basePis = Math.max(0, vBruto - vIcms);
           icmsExcluido += vIcms;
           const aliqPis = isReal ? 0.0165 : 0.0065;
@@ -814,14 +1601,12 @@
     };
   }
 
-  // Motor Local de Auditoria Pré-PVA
-  function executarAuditoriaLocal() {
+  // 9. Motor de Auditoria
+  function executarAuditoria() {
     const emp = state.empresaSelecionada;
-    const docs = state.documentos;
     const inconsistencias = [];
 
-    for (const doc of docs) {
-      // 1. Chave DV
+    for (const doc of state.documentos) {
       if (doc.chave_acesso && !validarModulo11(doc.chave_acesso)) {
         inconsistencias.push({
           tipo: 'ERRO',
@@ -832,7 +1617,6 @@
         });
       }
 
-      // 2. Soma de Itens
       const somaItens = (doc.itens || []).reduce((acc, it) => acc + (it.valor_bruto || 0), 0);
       if (Math.abs(somaItens - (doc.valor_total_documento || 0)) > 0.05) {
         inconsistencias.push({
@@ -844,7 +1628,6 @@
         });
       }
 
-      // 3. CST PIS vs Regime
       if (emp.regime_tributario === 'LUCRO_PRESUMIDO' && doc.tipo_operacao === 'ENTRADA') {
         for (const it of (doc.itens || [])) {
           if (it.cst_pis >= '50' && it.cst_pis <= '66') {
@@ -852,7 +1635,7 @@
               tipo: 'ERRO',
               codigo: 'VAL_CST_PIS_REGIME_COERENCIA',
               documento: `NF ${doc.numero}`,
-              mensagem: `Empresa no Lucro Presumido escriturou CST de crédito de PIS [${it.cst_pis}] vedado na Lei 9.718/1998.`
+              mensagem: `Empresa no Lucro Presumido escriturou CST de crédito [${it.cst_pis}], vedado no regime cumulativo.`
             });
           }
         }
@@ -868,6 +1651,7 @@
     };
   }
 
+  // 10. Utilitários e Geradores SPED
   function validarModulo11(chave) {
     if (!chave || chave.length !== 44) return false;
     const base = chave.substring(0, 43);
@@ -883,25 +1667,33 @@
     return dvCalculado === dvDeclarado;
   }
 
-  // Gerador de Texto EFD ICMS IPI
+  function gerarChaveComDv(base43) {
+    let soma = 0;
+    let peso = 2;
+    for (let i = base43.length - 1; i >= 0; i--) {
+      soma += parseInt(base43.charAt(i), 10) * peso;
+      peso = peso >= 9 ? 2 : peso + 1;
+    }
+    const resto = soma % 11;
+    const dv = (resto === 0 || resto === 1) ? 0 : 11 - resto;
+    return `${base43}${dv}`;
+  }
+
   function gerarSpedIcmsTxt() {
     const emp = state.empresaSelecionada;
     const dtIni = '01012026';
     const dtFin = '31012026';
     const lines = [];
 
-    // 0000
     lines.push(`|0000|018|0|${dtIni}|${dtFin}|${emp.razao_social}|${emp.cnpj.replace(/\D/g, '')}|${emp.uf}|${emp.inscricao_estadual.replace(/\D/g, '')}|${emp.codigo_municipio_ibge}|||${emp.perfil_sped}|0|`);
     lines.push('|0001|0|');
     lines.push(`|0005|${emp.nome_fantasia || emp.razao_social}|01001000|Avenida Principal|100||Centro|1133334444|fiscal@empresa.com.br|`);
     lines.push('|0100|Contador Responsavel|12345678909|CRC-SP 123456/O|12345678000195|01001000|Rua dos Contabilistas|50||Consolação|1133335555||contador@portal.com.br|3550308|');
 
-    // 0150
     for (const p of state.participantes) {
       lines.push(`|0150|${p.codigo_participante}|${p.nome}|1058|${p.cnpj_cpf.replace(/\D/g, '')}||${p.inscricao_estadual.replace(/\D/g, '')}|${p.codigo_municipio_ibge}||Rua Comercial|S/N||Centro|`);
     }
 
-    // 0190 e 0200
     lines.push('|0190|UN|Unidade|');
     lines.push('|0190|SC|Saca|');
     for (const prod of state.produtos) {
@@ -909,7 +1701,6 @@
     }
     lines.push(`|0990|${lines.length + 1}|`);
 
-    // Bloco C
     const startC = lines.length;
     lines.push('|C001|0|');
     for (const doc of state.documentos) {
@@ -924,7 +1715,6 @@
     }
     lines.push(`|C990|${lines.length - startC + 1}|`);
 
-    // Bloco E
     const startE = lines.length;
     lines.push('|E001|0|');
     lines.push(`|E100|${dtIni}|${dtFin}|`);
@@ -934,7 +1724,6 @@
     }
     lines.push(`|E990|${lines.length - startE + 1}|`);
 
-    // Bloco 9
     const start9 = lines.length;
     lines.push('|9001|0|');
     const counts = new Map();
@@ -984,7 +1773,7 @@
     return lines.map(l => `${l}\r\n`).join('');
   }
 
-  function downloadTxtFile(content, filename) {
+  function downloadFile(content, filename) {
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -994,6 +1783,14 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  function calcularMesRelativo(anoMes, delta) {
+    const [y, m] = anoMes.split('-').map(Number);
+    const date = new Date(y, m - 1 + delta, 1);
+    const ano = date.getFullYear();
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    return `${ano}-${mes}`;
   }
 
   function formatBrl(val) {
@@ -1013,7 +1810,6 @@
     return isoDate;
   }
 
-  // Inicializa quando o DOM estiver pronto
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
